@@ -1,0 +1,31 @@
+make-xml-playback.sh - create files needed by scautoloc to run an
+XML playback without connecting to the database
+
+Usage: make-xml-playback.sh "$event" "$comment"
+
+Based in the specified event ID, load all picks, manual and
+automatic, plus the associated amplitudes, from the database and
+dump them to an XML file. If present, also all *manual* origins
+belonging to the event are dumped. These are not used normally but
+can be used to simulate a manual location done by the user at any
+time "during" the event.
+
+The comment is optional.
+
+BEFORE you run the make-xml-playback.sh script, you need to edit it
+at the top to make the 'db' variable point to your SC3 database.
+Normally you just substitute geofon-proc with localhost of you run
+the script locally on your SC3 host.
+
+The time window around the event is -20 ... +30 minutes relative to
+the origin time, which is OK for teleseismic events. For playing
+back local events, this time window may be adjusted at the top of
+the dump-picks-to-xml.py script.
+
+As scautoloc in offline mode also needs the station coordinates, we
+dump these to a file, too, to make sure we have them available. For
+completeness, we also dump the bulletin for the event.
+
+The XML can then be used by scautoloc to play back the picks. This
+is done by invoking make-xml-playback.sh with the only argument
+being the event ID.
