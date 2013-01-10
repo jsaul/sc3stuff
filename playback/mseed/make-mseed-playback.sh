@@ -3,7 +3,7 @@
 # specify event id(s) on the command line
 
 host="geofon-proc"
-user="mkplayback" # max 10 characters allowed by spread
+#user="mkplayback" # max 10 characters allowed by spread
 
 for evid in "$@"
 do

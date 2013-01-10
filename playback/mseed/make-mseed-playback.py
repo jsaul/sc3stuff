@@ -124,7 +124,10 @@ class DumperApp(seiscomp3.Client.Application):
         netsta_keys.sort()
         for netsta in netsta_keys:
 
-            for attempt in 1,2,3:
+            number_of_attempts = 1 # experts only: increase in case of connection problems, normally not needed
+            for attempt in xrange(number_of_attempts):
+                if self.isExitRequested(): return
+
                 stream = seiscomp3.IO.RecordStream.Open(self.recordStreamURL())
                 stream.setTimeout(3600)
                 for net, sta, loc, cha in netsta_streams[netsta]:
@@ -145,14 +148,16 @@ class DumperApp(seiscomp3.Client.Application):
                     count += 1
 #                   sys.stderr.write("%-20s %6d\r" % (rec.streamID(), count))
                     if sort:
-                        nslc = tuple(rec.streamID().split("."))
-                        data.append( (rec.endTime(), nslc, rec.raw().str()) )
+#                       nslc = tuple(rec.streamID().split("."))
+#                       data.append( (rec.endTime(), nslc, rec.raw().str()) )
+                        data.append( (rec.endTime(), rec.raw().str()) )
                     else:
                         out.write("%s" % rec.raw().str())
 
                 sys.stderr.write("Read %d records for %d streams\n" % (count, len(netsta_streams[netsta])))
-                if count > 0:
+                if count > 0 or attempt+1 == number_of_attempts:
                     break
+                if self.isExitRequested(): return
                 sys.stderr.write("Trying again\n")
                 time.sleep(5)
 
@@ -162,7 +167,8 @@ class DumperApp(seiscomp3.Client.Application):
         if sort:
             # finally write sorted data and ensure uniqueness
             previous = None
-            for endTime, nslc, raw in data:
+#           for endTime, nslc, raw in data:
+            for endTime, raw in data:
                 if previous is not None and raw[6:] == previous[6:]:
                     # unfortunately duplicates do happen sometimes
                     continue
