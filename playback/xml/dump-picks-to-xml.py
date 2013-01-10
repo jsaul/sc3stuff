@@ -59,7 +59,7 @@ class PickLoader(Client.Application):
 
     def run(self):
         if not self._processCommandLineOptions():
-            sys.exit(5)
+            return False
 
         dbq = self.query()
         ep  = DataModel.EventParameters()
@@ -128,8 +128,8 @@ class PickLoader(Client.Application):
         ar.create("-")
         ar.writeObject(ep)
         ar.close()
-
         del ep
+        return True
 
 
 def main():

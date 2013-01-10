@@ -92,7 +92,7 @@ class DumperApp(seiscomp3.Client.Application):
         except:
             info = traceback.format_exception(*sys.exc_info())
             for i in info: sys.stderr.write(i)
-            sys.exit(-1)
+            return False
 
     def createCommandLineDescription(self):
         try:
@@ -101,11 +101,9 @@ class DumperApp(seiscomp3.Client.Application):
                 self.commandline().addStringOption("Dump", "event,E", "ID of event to dump")
             except:
                 seiscomp3.Logging.warning("caught unexpected error %s" % sys.exc_info())
-            return True
         except:
             info = traceback.format_exception(*sys.exc_info())
             for i in info: sys.stderr.write(i)
-            sys.exit(-1)
 
     def get_and_write_data(self, t1, t2, out):
         dbr = seiscomp3.DataModel.DatabaseReader(self.database())
@@ -208,19 +206,20 @@ class DumperApp(seiscomp3.Client.Application):
         except:
             info = traceback.format_exception(*sys.exc_info())
             for i in info: sys.stderr.write(i)
-            sys.exit(-1)
+            return False
 
     def run(self):
         try:
             self._dbq = self.query()
             evid = self.commandline().optionString("event")
-            self.dump(evid)
-            return True
-
+            if not self.dump(evid):
+                return False
         except:
             info = traceback.format_exception(*sys.exc_info())
             for i in info: sys.stderr.write(i)
             return False
+
+        return True
 
 
 def main():
