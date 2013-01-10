@@ -215,12 +215,13 @@ class DumperApp(seiscomp3.Client.Application):
             self._dbq = self.query()
             evid = self.commandline().optionString("event")
             self.dump(evid)
+            return True
 
         except:
             info = traceback.format_exception(*sys.exc_info())
             for i in info: sys.stderr.write(i)
-            sys.exit(-1)
-        
+            return False
+
 
 def main():
     app = DumperApp(len(sys.argv), sys.argv)
