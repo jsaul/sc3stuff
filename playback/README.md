@@ -1,12 +1,12 @@
 playbacks
 =========
 
-Scripts to support playbacks in SeisComP 3
+*Scripts to support playbacks in SeisComP 3*
 
-xml/
+* xml/
     XML based parameter playback (mainly for picks/amplitudes)
     primarily for testing and debugging of scautoloc
 
-mseed/
+* mseed/
     generation of sorted, multiplexed MiniSEED files suitable for
     full waveform playback in SeisComP 3

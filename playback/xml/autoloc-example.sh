@@ -12,7 +12,7 @@ do
     test -f $evt/objects.xml ||
     make-xml-playback.sh "$evt" "$comment"
 
-    run-xml-playback.sh $evt
+    run-xml-playback-autoloc.sh $evt
 
 done <<EOF
 #gfz2012atjr  split PKP event producing fake in Baltics/Belarus/...
