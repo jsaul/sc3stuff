@@ -12,12 +12,12 @@ network_whitelist = [] # all except blacklist
 before, after = 1800, 5400
 
 sort = True   # will produce sorted files with ".sorted-mseed" extension
-#sort = False # will produce UNsorted files with ".unsorted-mseed" extension
-### NOTE: unsorted output will be irrelevant for most users.
 
 
 def filterStreams(streams):
-    # if we have HH and BH streams use only BH etc.
+    # NOTE that the criteria here are quite application dependent:
+    # If we have HH and BH streams use only BH etc., but in other
+    # contexts HH would have priority over BH
 
     filtered = []
 
@@ -67,7 +67,6 @@ def getCurrentStreams(dbr):
                     if stream.code()[:2] not in stream_whitelist:
                         continue
 
-#                   print network.code(), station.code(), loc.code(), stream.code()
                     result.append( (network.code(), station.code(), loc.code(), stream.code()) )
 
     return filterStreams(result)
@@ -99,6 +98,7 @@ class DumperApp(seiscomp3.Client.Application):
             try:
                 self.commandline().addGroup("Dump")
                 self.commandline().addStringOption("Dump", "event,E", "ID of event to dump")
+                self.commandline().addOption("Dump", "unsorted,U", "produce unsorted output (not suitable for direct playback!)")
             except:
                 seiscomp3.Logging.warning("caught unexpected error %s" % sys.exc_info())
         except:
@@ -144,10 +144,7 @@ class DumperApp(seiscomp3.Client.Application):
                         break
 
                     count += 1
-#                   sys.stderr.write("%-20s %6d\r" % (rec.streamID(), count))
                     if sort:
-#                       nslc = tuple(rec.streamID().split("."))
-#                       data.append( (rec.endTime(), nslc, rec.raw().str()) )
                         data.append( (rec.endTime(), rec.raw().str()) )
                     else:
                         out.write("%s" % rec.raw().str())
@@ -165,7 +162,6 @@ class DumperApp(seiscomp3.Client.Application):
         if sort:
             # finally write sorted data and ensure uniqueness
             previous = None
-#           for endTime, nslc, raw in data:
             for endTime, raw in data:
                 if previous is not None and raw[6:] == previous[6:]:
                     # unfortunately duplicates do happen sometimes
@@ -175,6 +171,7 @@ class DumperApp(seiscomp3.Client.Application):
 
 
     def dump(self, eventID):
+        self._dbq = self.query()
         evt = self._dbq.loadObject(seiscomp3.DataModel.Event.TypeInfo(), eventID)
         evt = seiscomp3.DataModel.Event.Cast(evt)
         if evt is None:
@@ -210,7 +207,9 @@ class DumperApp(seiscomp3.Client.Application):
 
     def run(self):
         try:
-            self._dbq = self.query()
+            if self.commandline().hasOption("unsorted"):
+                sort = False
+
             evid = self.commandline().optionString("event")
             if not self.dump(evid):
                 return False
