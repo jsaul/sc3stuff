@@ -4,7 +4,7 @@ evt="$1" comment="$2"
 
 ###### configuration #######
 # Give address of database
-db="mysql://sysop:sysop@geofon-proc/seiscomp3"
+db="mysql://sysop:sysop@geofon-proc1/seiscomp3"
 ############################
 
 if test -z "$evt"
