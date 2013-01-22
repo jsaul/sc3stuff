@@ -1,15 +1,19 @@
 #!/bin/sh
 
-# specify event id(s) on the command line
+###### configuration #######
+# Give name of processing host
 host="geofon-proc"
-#user="mkplayback" # max 10 characters allowed by spread
-arch="geofon-acqui:18001"
+# Give location of waveform archive
+arch="arclink://geofon-acqui:18001"
+############################
+
+# specify event id(s) on the command line
+
 
 
 for evid in "$@"
 do
-    python make-mseed-playback.py -H "$host" -I arclink://$arch --user "$user" -E "$evid" --debug 2>&1 |
-#   python make-mseed-playback.py -H "$host" -I arclink://$arch --user "$user" -E "$evid" --debug 2>&1 |
+    python make-mseed-playback.py -H "$host" -I $arch --user "" -E "$evid" --debug 2>&1 |
     tee $evid.log
 done
 
