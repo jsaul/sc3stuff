@@ -23,23 +23,23 @@ strip_time () {
 
 case "$evt" in
 gfz*)
-    descr="$evt/description.txt"
+    descr="playbacks/$evt/description.txt"
     test -f "Â$descr" || wget -O "$descr" "http://geofon.gfz-potsdam.de/eqinfo/event.php?id=$evt&fmt=txt" >/dev/null 2>&1
     ( cat "$descr"; echo ) >&2
     ;;
 esac
 
-xml="$evt/objects.xml"
+xml="playbacks/$evt/objects.xml"
 
 #valgrind --track-origins=yes -v \
 scautoloc -v --console=1 $debug \
     --use-manual-origins 1 \
     --offline --playback --input "$xml" --speed 0 \
-    --station-locations   $evt/station-locations.txt \
+    --station-locations   playbacks/$evt/station-locations.txt \
     --station-config      config/station.conf \
     --grid                config/grid.conf \
     2>&1 |
-strip_time | tee $evt/playback.log
+strip_time | tee $evt-playback.log
 
-grep OUT $evt/playback.log
+grep OUT $evt-playback.log
 

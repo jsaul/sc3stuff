@@ -24,8 +24,8 @@ do
     test -f config/$f || cp -p ~/seiscomp3/share/scautoloc/$f config/
 done
 
-mkdir -p "$evt"
-dump-picks-to-xml.py $debug --event "$evt" -d "$db"   > "$evt"/objects.xml
-test -z "$comment" || echo "$evt  $comment"           > "$evt"/comment.txt
-dump-station-locations.py $debug -d "$db"             > "$evt"/station-locations.txt
-scbulletin $debug -3 -d "$db" -E "$evt"               > "$evt"/bulletin
+mkdir -p "playbacks/$evt"
+dump-picks-to-xml.py $debug --event "$evt" -d "$db"   > "playbacks/$evt"/objects.xml
+test -z "$comment" || echo "$evt  $comment"           > "playbacks/$evt"/comment.txt
+dump-station-locations.py $debug -d "$db"             > "playbacks/$evt"/station-locations.txt
+scbulletin $debug -3 -d "$db" -E "$evt"               > "playbacks/$evt"/bulletin
