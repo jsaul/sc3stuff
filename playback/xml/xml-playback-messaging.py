@@ -1,5 +1,5 @@
-import sys, traceback, time
-from seiscomp3 import Core, Client, DataModel, Communication, IO
+import sys, os, time, tempfile
+from seiscomp3 import Core, Client, DataModel, Communication, IO, Logging
 
 class PickPlayer(Client.Application):
 
@@ -52,9 +52,9 @@ class PickPlayer(Client.Application):
                 self.speed = float(self.speed)
         except: self.speed = 1
 
-        if not self._xmlFile:
-            sys.stderr.write("must specify xml file\n")
-            return False
+#       if not self._xmlFile:
+#           sys.stderr.write("must specify xml file\n")
+#           return False
 
         if start:
             self._startTime = Core.Time.GMT()
@@ -81,7 +81,7 @@ class PickPlayer(Client.Application):
             raise TypeError, self._xmlFile + ": no eventparameters found"
         return ep
 
-    def run(self):
+    def _runBatchMode(self):
         ep = self._readEventParametersFromXML()
 
         # collect the objects
@@ -152,6 +152,52 @@ class PickPlayer(Client.Application):
                 self.sync()
 
         return
+
+    def _runStreamMode(self, ifile=sys.stdin):
+
+        xmlBuffer = ""
+
+        while not self.isExitRequested():
+            s = ifile.read(100)
+            if len(s)==0: return # EOF
+            xmlBuffer += s
+
+            minpos = len(xmlBuffer)
+            mintag = ""
+            for tag in ["pick", "amplitude", ]:
+                pos = xmlBuffer.find("<%s"%tag)
+                if pos != -1 and pos < minpos:
+                    minpos = pos
+                    mintag = tag
+
+            if mintag:
+                close = "</%s>" % mintag
+                pos = xmlBuffer.find(close)
+                if pos != -1:
+                    maxpos = pos+len(close)
+                    xmlblock = xmlBuffer[minpos:maxpos]
+                    ofile = file(self._xmlFile, "w")
+                    ofile.write('<?xml version="1.0" encoding="UTF-8"?><seiscomp xmlns="http://geofon.gfz-potsdam.de/ns/seiscomp3-schema/0.7" version="0.7"><EventParameters>%s</EventParameters></seiscomp>\n' % xmlblock)
+                    ofile.close()
+                    # use batch mode to pick up data in temp file
+                    self._runBatchMode()
+                    xmlBuffer = xmlBuffer[maxpos:]
+
+    def run(self):
+
+        if self._xmlFile:
+            Logging.debug("running in batch mode")
+            Logging.debug("input file is %s" % self._xmlFile)
+            return self._runBatchMode()
+
+        self._xmlFile = tempfile.mktemp(".xml")
+        Logging.debug("running in stream mode")
+        Logging.debug("temp file is %s" % self._xmlFile)
+        status = self._runStreamMode()
+        os.unlink(self._xmlFile)
+        return status
+
+
 
 app = PickPlayer(len(sys.argv), sys.argv)
 sys.exit(app())
