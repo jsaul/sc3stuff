@@ -10,19 +10,18 @@ class PickPlayer(Client.Application):
         self.setPrimaryMessagingGroup("PICK")
         self._startTime = self._endTime = None
         self._xmlFile = None
-        self._send = True
         self.speed = 1
 
     def createCommandLineDescription(self):
         Client.Application.createCommandLineDescription(self)
         self.commandline().addGroup("Mode");
         self.commandline().addOption("Mode", "test", "Do not send any object");
-        self.commandline().addGroup("Dump")
-        self.commandline().addStringOption("Dump", "begin", "specify start of time window")
-        self.commandline().addStringOption("Dump", "end", "specify end of time window")
-        self.commandline().addStringOption("Dump", "speed", "specify speed factor")
+        self.commandline().addGroup("Play")
+        self.commandline().addStringOption("Play", "begin", "specify start of time window")
+        self.commandline().addStringOption("Play", "end", "specify end of time window")
+        self.commandline().addStringOption("Play", "speed", "specify speed factor")
         self.commandline().addGroup("Input")
-        self.commandline().addStringOption("Input", "xml", "specify xml file")
+        self.commandline().addStringOption("Input", "xml-file", "specify xml file")
 
     def validateParameters(self):
         if not self.commandline().hasOption("test"):
@@ -41,7 +40,7 @@ class PickPlayer(Client.Application):
         try:    end = self.commandline().optionString("end")
         except: end = None
 
-        try:    self._xmlFile = self.commandline().optionString("xml")
+        try:    self._xmlFile = self.commandline().optionString("xml-file")
         except: pass
 
         try:
@@ -51,10 +50,6 @@ class PickPlayer(Client.Application):
             else:
                 self.speed = float(self.speed)
         except: self.speed = 1
-
-#       if not self._xmlFile:
-#           sys.stderr.write("must specify xml file\n")
-#           return False
 
         if start:
             self._startTime = Core.Time.GMT()
@@ -95,8 +90,6 @@ class PickPlayer(Client.Application):
             # FIXME: The cast hack forces the SC3 refcounter to be increased.
             ampl = DataModel.Amplitude.Cast(ep.amplitude(0))
             ep.removeAmplitude(0)
-#           if ampl.type() not in ["mb", "snr"]:
-#               continue
             objs.append(ampl)
         while ep.originCount() > 0:
             # FIXME: The cast hack forces the SC3 refcounter to be increased.
@@ -137,51 +130,37 @@ class PickPlayer(Client.Application):
             if obj.ClassName() not in [ "Pick", "Amplitude", "Origin" ]:
                 continue
 
-            if self._send:
-                DataModel.Notifier.Enable()
-                ep.add(obj)
-                msg = DataModel.Notifier.GetMessage()
-                if self.commandline().hasOption("test"):
-                    sys.stderr.write("Test mode - not sending %-10s %s\n" % (obj.ClassName(), obj.publicID()))
+            DataModel.Notifier.Enable()
+            ep.add(obj)
+            msg = DataModel.Notifier.GetMessage()
+            if self.commandline().hasOption("test"):
+                sys.stderr.write("Test mode - not sending %-10s %s\n" % (obj.ClassName(), obj.publicID()))
+            else:
+                if self.connection().send(msg):
+                    sys.stderr.write("Sent %s %s\n" % (obj.ClassName(), obj.publicID()))
                 else:
-                    if self.connection().send(msg):
-                        sys.stderr.write("Sent %s %s\n" % (obj.ClassName(), obj.publicID()))
-                    else:
-                        sys.stderr.write("Failed to send %-10s %s\n" % (obj.ClassName(), obj.publicID()))
-                DataModel.Notifier.Disable()
-                self.sync()
+                    sys.stderr.write("Failed to send %-10s %s\n" % (obj.ClassName(), obj.publicID()))
+            DataModel.Notifier.Disable()
+            self.sync()
 
         return
 
-    def _runStreamMode(self, ifile=sys.stdin):
 
-        xmlBuffer = ""
+    def _runStreamMode(self, stream=sys.stdin):
 
-        while not self.isExitRequested():
-            s = ifile.read(100)
-            if len(s)==0: return # EOF
-            xmlBuffer += s
+        import xml.dom.pulldom
+        events = xml.dom.pulldom.parse(stream, bufsize=100)
+        for event in events:
+            typ, node = event
+            if typ == 'START_ELEMENT' and node.nodeName in ["pick","amplitude","origin"]:
+                events.expandNode(node)
+                xmlNode = node.toxml()
+                ofile = file(self._xmlFile, "w")
+                ofile.write('<?xml version="1.0" encoding="UTF-8"?><seiscomp xmlns="http://geofon.gfz-potsdam.de/ns/seiscomp3-schema/0.7" version="0.7"><EventParameters>%s</EventParameters></seiscomp>\n' % xmlNode)
+                ofile.close()
+                # in batch mode pick up data in temp file
+                self._runBatchMode()
 
-            minpos = len(xmlBuffer)
-            mintag = ""
-            for tag in ["pick", "amplitude", ]:
-                pos = xmlBuffer.find("<%s"%tag)
-                if pos != -1 and pos < minpos:
-                    minpos = pos
-                    mintag = tag
-
-            if mintag:
-                close = "</%s>" % mintag
-                pos = xmlBuffer.find(close)
-                if pos != -1:
-                    maxpos = pos+len(close)
-                    xmlblock = xmlBuffer[minpos:maxpos]
-                    ofile = file(self._xmlFile, "w")
-                    ofile.write('<?xml version="1.0" encoding="UTF-8"?><seiscomp xmlns="http://geofon.gfz-potsdam.de/ns/seiscomp3-schema/0.7" version="0.7"><EventParameters>%s</EventParameters></seiscomp>\n' % xmlblock)
-                    ofile.close()
-                    # use batch mode to pick up data in temp file
-                    self._runBatchMode()
-                    xmlBuffer = xmlBuffer[maxpos:]
 
     def run(self):
 
@@ -194,7 +173,8 @@ class PickPlayer(Client.Application):
         Logging.debug("running in stream mode")
         Logging.debug("temp file is %s" % self._xmlFile)
         status = self._runStreamMode()
-        os.unlink(self._xmlFile)
+        if os.path.exists(self._xmlFile):
+            os.unlink(self._xmlFile)
         return status
 
 
