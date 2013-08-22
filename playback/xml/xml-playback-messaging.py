@@ -10,6 +10,7 @@ class PickPlayer(Client.Application):
         self.setPrimaryMessagingGroup("PICK")
         self._startTime = self._endTime = None
         self._xmlFile = None
+        self._tmpDir = None
         self.speed = 1
 
     def createCommandLineDescription(self):
@@ -22,6 +23,7 @@ class PickPlayer(Client.Application):
         self.commandline().addStringOption("Play", "speed", "specify speed factor")
         self.commandline().addGroup("Input")
         self.commandline().addStringOption("Input", "xml-file", "specify xml file")
+        self.commandline().addStringOption("Input", "tmp-dir", "specify tmp directory (default is /tmp)")
 
     def validateParameters(self):
         if not self.commandline().hasOption("test"):
@@ -41,6 +43,9 @@ class PickPlayer(Client.Application):
         except: end = None
 
         try:    self._xmlFile = self.commandline().optionString("xml-file")
+        except: pass
+
+        try:    self._tmpDir = self.commandline().optionString("tmp-dir")
         except: pass
 
         try:
@@ -156,6 +161,7 @@ class PickPlayer(Client.Application):
                 events.expandNode(node)
                 xmlNode = node.toxml()
                 ofile = file(self._xmlFile, "w")
+                # wrap object into a SC3 XML template
                 ofile.write('<?xml version="1.0" encoding="UTF-8"?><seiscomp xmlns="http://geofon.gfz-potsdam.de/ns/seiscomp3-schema/0.7" version="0.7"><EventParameters>%s</EventParameters></seiscomp>\n' % xmlNode)
                 ofile.close()
                 # in batch mode pick up data in temp file
@@ -169,7 +175,7 @@ class PickPlayer(Client.Application):
             Logging.debug("input file is %s" % self._xmlFile)
             return self._runBatchMode()
 
-        self._xmlFile = tempfile.mktemp(".xml")
+        self._xmlFile = tempfile.mktemp(".xml", dir=self._tmpDir)
         Logging.debug("running in stream mode")
         Logging.debug("temp file is %s" % self._xmlFile)
         status = self._runStreamMode()
