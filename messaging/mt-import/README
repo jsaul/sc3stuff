@@ -1,0 +1,8 @@
+Demo script that sends double-couple focal mechanisms to a SeisComP
+messaging. The focal mechanism will then be displayed in the GUIs
+like scesv.
+
+While functioning, this is really only a demo. In a production
+version, the script would possibly send complete moment tensors and
+populate a lot more fields. But as it is the script can be used as
+starting point for own developments - that's the intention.
