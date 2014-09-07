@@ -59,16 +59,22 @@ class FocalMechanismImporter(Client.Application):
             pass
 
         try:
-            fm.mw = self.commandline().optionString("mw")
-            fm.mw = float(fm.mw)
+            fm.Mw = self.commandline().optionString("mw")
+            fm.Mw = float(fm.Mw)
         except:
-            fm.mw = None
+            fm.Mw = None
 
         return self.importFocalMechanism(eventID, fm)
+
 
     def importFocalMechanism(self, eventID, fm):
 
         now = Core.Time.GMT()
+        crea = DataModel.CreationInfo()
+        crea.setAuthor("MT import script")
+        crea.setAgencyID("TEST")
+        crea.setCreationTime(now)
+        crea.setModificationTime(now)
 
         event = self.query().loadObject(DataModel.Event.TypeInfo(), eventID)
         event = DataModel.Event.Cast(event)
@@ -83,6 +89,21 @@ class FocalMechanismImporter(Client.Application):
             Logging.error("origin '%s' not loaded" % originID)
             return False
 
+        # clone origin to attach Mw to it
+        publicID = "MT#Origin#"+origin.publicID()
+        origin = DataModel.Origin.Cast(origin.clone())
+        origin.setPublicID(publicID)
+        origin.setCreationInfo(crea)
+
+        if fm.Mw:
+            magnitude = DataModel.Magnitude.Create()
+            magnitude.setCreationInfo(crea)
+            magnitude.setStationCount(0)
+            magnitude.setMagnitude(DataModel.RealQuantity(fm.Mw))
+            magnitude.setType("Mw")
+            origin.add(magnitude)
+
+        # create and populate a focal mechanism
         focmecID = "FM#"+eventID+now.toString("#%Y%m%d.%H%M%S.%f000000")[:20] 
         focmec = DataModel.FocalMechanism.Create(focmecID)
         focmec.setTriggeringOriginID(originID)
@@ -110,45 +131,46 @@ class FocalMechanismImporter(Client.Application):
             np.setNodalPlane2(np2)
  
         focmec.setNodalPlanes(np) 
-
-        ep = DataModel.EventParameters()
-        DataModel.Notifier.Enable()
-
-        crea = DataModel.CreationInfo()
-        crea.setAuthor("MT import script")
-        crea.setAgencyID("TEST")
-        crea.setCreationTime(now)
-        crea.setModificationTime(now)
         focmec.setCreationInfo(crea)
         focmec.setEvaluationStatus(DataModel.REVIEWED)
         focmec.setEvaluationMode(DataModel.MANUAL)
 
-#       quality = DataModel.OriginQuality()
-#       if gap: quality.setAzimuthalGap(gap)
-#       quality.setUsedPhaseCount(nph)
-#       origin.setQuality(quality)
 
+        # create and populate a moment tensor
+        momtenID = "MT#"+eventID+now.toString("#%Y%m%d.%H%M%S.%f000000")[:20] 
+        momten = DataModel.MomentTensor.Create(momtenID)
+        momten = DataModel.MomentTensor.Cast(momten)
+        momten.setDerivedOriginID(origin.publicID())
+        if fm.Mw:
+            momten.setMomentMagnitudeID(magnitude.publicID())
+        momten.setCreationInfo(crea)
+        focmec.add(momten)
+
+        ep = DataModel.EventParameters()
+        DataModel.Notifier.Enable()
         ep.add(focmec)
         msg = DataModel.Notifier.GetMessage()
         if not self.commandline().hasOption("test"):
-            if not self.connection().send(msg):
+            if not self.connection().send("FOCMECH", msg):
                 sys.stderr.write("Failed to send focmec %s\n" % focmecID)
         DataModel.Notifier.Disable()
 
-        if fm.mw:
-            DataModel.Notifier.Enable()
-            magnitude = DataModel.Magnitude.Create()
-            magnitude.setCreationInfo(crea)
-            magnitude.setStationCount(0)
-            magnitude.setMagnitude(DataModel.RealQuantity(fm.mw))
-            magnitude.setType("Mw")
-
-        origin.add(magnitude)
+        DataModel.Notifier.Enable()
+        ep.add(origin)
         msg = DataModel.Notifier.GetMessage()
         if not self.commandline().hasOption("test"):
-            if not self.connection().send("MAGNITUDE", msg):
-                sys.stderr.write("Failed to send magnitude\n")
+            if not self.connection().send("LOCATION", msg):
+                sys.stderr.write("Failed to send origin %s\n" % originID)
         DataModel.Notifier.Disable()
+
+        if fm.Mw:
+            DataModel.Notifier.Enable()
+            msg = DataModel.Notifier.GetMessage()
+            if not self.commandline().hasOption("test"):
+                if not self.connection().send("MAGNITUDE", msg):
+                    sys.stderr.write("Failed to send magnitude\n")
+            DataModel.Notifier.Disable()
+
         return True
 
 app = FocalMechanismImporter(len(sys.argv), sys.argv)
