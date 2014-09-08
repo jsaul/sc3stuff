@@ -135,8 +135,7 @@ class FocalMechanismImporter(Client.Application):
         focmec.setEvaluationStatus(DataModel.REVIEWED)
         focmec.setEvaluationMode(DataModel.MANUAL)
 
-
-        # create and populate a moment tensor
+        # create moment tensor and populate it with (just) Mw
         momtenID = "MT#"+eventID+now.toString("#%Y%m%d.%H%M%S.%f000000")[:20] 
         momten = DataModel.MomentTensor.Create(momtenID)
         momten = DataModel.MomentTensor.Cast(momten)
@@ -144,13 +143,18 @@ class FocalMechanismImporter(Client.Application):
         if fm.Mw:
             momten.setMomentMagnitudeID(magnitude.publicID())
         momten.setCreationInfo(crea)
+        # Obviously we could populate the entire moment tensor
+        # elements, but we don't here to keep things simple and
+        # because it's just for demo purposes.
         focmec.add(momten)
 
+        # add the created objects to the EventParameters
+        # then retrieve and send corresponding notifier messages
         ep = DataModel.EventParameters()
         DataModel.Notifier.Enable()
         ep.add(focmec)
         msg = DataModel.Notifier.GetMessage()
-        if not self.commandline().hasOption("test"):
+        if msg and not self.commandline().hasOption("test"):
             if not self.connection().send("FOCMECH", msg):
                 sys.stderr.write("Failed to send focmec %s\n" % focmecID)
         DataModel.Notifier.Disable()
@@ -158,20 +162,13 @@ class FocalMechanismImporter(Client.Application):
         DataModel.Notifier.Enable()
         ep.add(origin)
         msg = DataModel.Notifier.GetMessage()
-        if not self.commandline().hasOption("test"):
+        if msg and not self.commandline().hasOption("test"):
             if not self.connection().send("LOCATION", msg):
                 sys.stderr.write("Failed to send origin %s\n" % originID)
         DataModel.Notifier.Disable()
 
-        if fm.Mw:
-            DataModel.Notifier.Enable()
-            msg = DataModel.Notifier.GetMessage()
-            if not self.commandline().hasOption("test"):
-                if not self.connection().send("MAGNITUDE", msg):
-                    sys.stderr.write("Failed to send magnitude\n")
-            DataModel.Notifier.Disable()
-
         return True
+
 
 app = FocalMechanismImporter(len(sys.argv), sys.argv)
 app.setMessagingUsername("imp-fm")
