@@ -16,17 +16,14 @@ class EventClient(Application):
         self.addMessagingSubscription("MAGNITUDE")
         self.setAutoApplyNotifierEnabled(True)
 
-        # event id is the key for these dicts:
+        # object buffer, FIXME: clean-up of old/unreferenced objects still missing!
         self._event = {}
-        self._preferredOriginID = {}
-        self._preferredMagnitudeID = {}
-
-        self._preferredOrigin = {}
-        self._preferredMagnitude = {}
-
-        # temporary buffer for non-preferred magnitudes
         self._origin = {}
         self._magnitude = {}
+
+        # event id is the key for these dicts
+        self._preferredOriginID = {}
+        self._preferredMagnitudeID = {}
 
 
     def log(self, msg):
@@ -87,34 +84,30 @@ class EventClient(Application):
 
 
     def _process_origin(self, obj):
-        oid = obj.publicID()
-        self.log("_process_origin %s" % oid)
+        pass # currently nothing to do here
 
 
     def _process_magnitude(self, obj):
-        oid = obj.publicID()
-        self.log("_process_magnitude %s" % oid)
+        pass # currently nothing to do here
+
+
+    def _load(self, oid, tp):
+        tmp = tp.Cast(self.query().loadObject(tp.TypeInfo(), oid))
+        if tmp:
+            self.log("loaded %s %s" % (tmp.ClassName(), oid))
+        return tmp
 
 
     def _load_event(self, oid):
-        tmp = Event.Cast(self.query().loadObject(Event.TypeInfo(), oid))
-        if tmp:
-            self.log("loaded event %s" % oid)
-        self._event[oid] = tmp
+        self._event[oid] = self._load(oid, Event)
 
 
     def _load_origin(self, oid):
-        tmp = Origin.Cast(self.query().loadObject(Origin.TypeInfo(), oid))
-        if tmp:
-            self.log("loaded origin %s" % oid)
-        self._origin[oid] = tmp
+        self._origin[oid] = self._load(oid, Origin)
 
 
     def _load_magnitude(self, oid):
-        tmp = Magnitude.Cast(self.query().loadObject(Magnitude.TypeInfo(), oid))
-        if tmp:
-            self.log("loaded magnitude %s" % oid)
-        self._magnitude[oid] = tmp
+        self._magnitude[oid] = self._load(oid, Magnitude)
 
 
     def process(self, obj):
