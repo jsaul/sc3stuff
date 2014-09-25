@@ -29,8 +29,24 @@ class EventClient(Application):
         self._magnitude = {}
 
 
+    def log(self, msg):
+        sys.stdout.write("%s\n" % msg)
+
+
+    def changed_origin(self, event_id, previous_id, current_id):
+        self.log("event %s: CHANGED preferredOriginID" % event_id)
+        self.log("    from %s" % previous_id)
+        self.log("      to %s" % current_id)
+
+
+    def changed_magnitude(self, event_id, previous_id, current_id):
+        self.log("event %s: CHANGED preferredMagnitudeID" % event_id)
+        self.log("    from %s" % previous_id)
+        self.log("      to %s" % current_id)
+
+
     def _process_event(self, obj):
-        print "_process_event", obj.publicID()
+        self.log("_process_event %s" % obj.publicID())
 
         try:
             previous_preferredOriginID = self._preferredOriginID[obj.publicID()]
@@ -62,43 +78,44 @@ class EventClient(Application):
         # and preferredMagnitudeID.
         if previous_preferredOriginID:
             if preferredOriginID != previous_preferredOriginID:
-                print "event %s: CHANGED preferredOriginID" % obj.publicID()
-                print "    from", previous_preferredOriginID
-                print "      to", preferredOriginID
+                self.changed_origin(obj.publicID(), previous_preferredOriginID, preferredOriginID)
 
         if previous_preferredMagnitudeID:
             if preferredMagnitudeID != previous_preferredMagnitudeID:
-                print "event %s: CHANGED preferredMagnitudeID" % obj.publicID()
-                print "    from", previous_preferredMagnitudeID
-                print "      to", preferredMagnitudeID
+                self.changed_magnitude(obj.publicID(), previous_preferredMagnitudeID, preferredMagnitudeID)
         # TODO: Do some real work here :-)
 
 
     def _process_origin(self, obj):
         oid = obj.publicID()
-        print "_process_origin", oid
+        self.log("_process_origin %s" % oid)
+
 
     def _process_magnitude(self, obj):
         oid = obj.publicID()
-        print "_process_magnitude", oid
+        self.log("_process_magnitude %s" % oid)
+
 
     def _load_event(self, oid):
         tmp = Event.Cast(self.query().loadObject(Event.TypeInfo(), oid))
         if tmp:
-            print "loaded event %s from db" % oid
+            self.log("loaded event %s" % oid)
         self._event[oid] = tmp
+
 
     def _load_origin(self, oid):
         tmp = Origin.Cast(self.query().loadObject(Origin.TypeInfo(), oid))
         if tmp:
-            print "loaded origin %s from db" % oid
+            self.log("loaded origin %s" % oid)
         self._origin[oid] = tmp
+
 
     def _load_magnitude(self, oid):
         tmp = Magnitude.Cast(self.query().loadObject(Magnitude.TypeInfo(), oid))
         if tmp:
-            print "loaded magnitude %s from db" % oid
+            self.log("loaded magnitude %s" % oid)
         self._magnitude[oid] = tmp
+
 
     def process(self, obj):
         try:
@@ -106,10 +123,10 @@ class EventClient(Application):
                 obj = self._event[obj.publicID()]
                 self._process_event(obj)
             elif obj.ClassName() == "Origin":
-                obj = self._preferredOrigin[obj.publicID()]
+                obj = self._origin[obj.publicID()]
                 self._process_origin(obj)
             elif obj.ClassName() == "Magnitude":
-                obj = self._preferredMagnitude[obj.publicID()]
+                obj = self._magnitude[obj.publicID()]
                 self._process_magnitude(obj)
         except:
             info = traceback.format_exception(*sys.exc_info())
@@ -152,7 +169,7 @@ class EventClient(Application):
 
         if not obj: return # probably other type
 
-        print "UPD %-15s object %s   parent: %s" % (obj.ClassName(), oid, parentID)
+        self.log("UPD %-15s object %s   parent: %s" % (obj.ClassName(), oid, parentID))
         self.process(obj)
 
 
@@ -177,7 +194,7 @@ class EventClient(Application):
 
         if not obj: return # probably other type
 
-        print "NEW %-15s object %s   parent: %s" % (obj.ClassName(), oid, parentID)
+        self.log("NEW %-15s object %s   parent: %s" % (obj.ClassName(), oid, parentID))
         self.process(obj)
 
 
