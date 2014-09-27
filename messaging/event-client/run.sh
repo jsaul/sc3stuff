@@ -2,4 +2,6 @@
 
 . ~/.seiscomp3/env.sh
 
-python event-client.py  -u xyzabc -H geofon-proc
+date
+python eventclient.py --debug  -u js.test -H geofon-proc
+date

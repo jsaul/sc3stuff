@@ -1,8 +1,9 @@
 import sys, traceback
+from seiscomp3.Core import Time, TimeSpan
 from seiscomp3.Client import Application
-from seiscomp3.DataModel import Event, Origin, Magnitude
+from seiscomp3.DataModel import Event, Origin, Magnitude, PublicObject
 from seiscomp3.Communication import Protocol 
-
+from seiscomp3.Logging import info, debug, error
 
 class EventClient(Application):
 
@@ -24,26 +25,52 @@ class EventClient(Application):
         # event id is the key for these dicts
         self._preferredOriginID = {}
         self._preferredMagnitudeID = {}
+        self._cleanupCounter = 0
 
 
-    def log(self, msg):
-        sys.stdout.write("%s\n" % msg)
-
+    def cleanup(self):
+        self._cleanupCounter += 1
+        if self._cleanupCounter < 100:
+            return
+        limit = Time.GMT() + TimeSpan(-3600)
+        preferredOriginIDs = []
+        preferredMagnitudeIDs = []
+        for oid in self._event:
+            preferredOriginIDs.append(self._preferredOriginID[oid])
+            preferredMagnitudeIDs.append(self._preferredMagnitudeID[oid])
+        originIDs = self._origin.keys()
+        for oid in originIDs:
+            if oid not in preferredOriginIDs:
+                if self._origin[oid].creationInfo().creationTime() < limit:
+                    del self._origin[oid]
+        magnitudeIDs = self._magnitude.keys()
+        for oid in magnitudeIDs:
+            if oid not in preferredMagnitudeIDs:
+                if self._magnitude[oid] == None:
+                    # This should actually never happen!
+                    error("Magnitude %s is NULL!" % oid)
+                    del self._magnitude[oid]
+                    continue
+                if self._magnitude[oid].creationInfo().creationTime() < limit:
+                    del self._magnitude[oid]
+        self._cleanupCounter = 0
 
     def changed_origin(self, event_id, previous_id, current_id):
-        self.log("event %s: CHANGED preferredOriginID" % event_id)
-        self.log("    from %s" % previous_id)
-        self.log("      to %s" % current_id)
+        info("event %s: CHANGED preferredOriginID" % event_id)
+        info("    from %s" % previous_id)
+        info("      to %s" % current_id)
+        self.cleanup()
 
 
     def changed_magnitude(self, event_id, previous_id, current_id):
-        self.log("event %s: CHANGED preferredMagnitudeID" % event_id)
-        self.log("    from %s" % previous_id)
-        self.log("      to %s" % current_id)
+        info("event %s: CHANGED preferredMagnitudeID" % event_id)
+        info("    from %s" % previous_id)
+        info("      to %s" % current_id)
+        self.cleanup()
 
 
     def _process_event(self, obj):
-        self.log("_process_event %s" % obj.publicID())
+        debug("_process_event %s start" % obj.publicID())
 
         try:
             previous_preferredOriginID = self._preferredOriginID[obj.publicID()]
@@ -81,6 +108,7 @@ class EventClient(Application):
             if preferredMagnitudeID != previous_preferredMagnitudeID:
                 self.changed_magnitude(obj.publicID(), previous_preferredMagnitudeID, preferredMagnitudeID)
         # TODO: Do some real work here :-)
+        debug("_process_event %s end" % obj.publicID())
 
 
     def _process_origin(self, obj):
@@ -94,7 +122,7 @@ class EventClient(Application):
     def _load(self, oid, tp):
         tmp = tp.Cast(self.query().loadObject(tp.TypeInfo(), oid))
         if tmp:
-            self.log("loaded %s %s" % (tmp.ClassName(), oid))
+            debug("loaded %s %s" % (tmp.ClassName(), oid))
         return tmp
 
 
@@ -111,6 +139,7 @@ class EventClient(Application):
 
 
     def process(self, obj):
+        debug("process start")
         try:
             if obj.ClassName() == "Event":
                 obj = self._event[obj.publicID()]
@@ -124,6 +153,7 @@ class EventClient(Application):
         except:
             info = traceback.format_exception(*sys.exc_info())
             for i in info: sys.stderr.write(i)
+        debug("process end")
                 
 
     def updateObject(self, parentID, updated):
@@ -136,23 +166,28 @@ class EventClient(Application):
 
             oid = obj.publicID()
 
+            debug("updateObject start %s  oid=%s" % (obj.ClassName(), oid))
+
             # our utility may have been offline during addObject, so we need to check
             # whether this is the first time that we see this object.
             # If that is the case, we load that object from the database in order to
             # be sure that we are working with the complete object.
             if tp is Event:
+                debug("updateObject Event")
                 if oid in self._event:
                     # *update* the existing instance - do *not* overwrite it!
                     self._event[oid].assign(obj)
                 else:
                     self._load_event(oid)
             elif tp is Origin:
+                debug("updateObject Origin")
                 if oid in self._origin:
                     # *update* the existing instance - do *not* overwrite it!
                     self._origin[oid].assign(obj)
                 else:
                     self._load_origin(oid)
             elif tp is Magnitude:
+                debug("updateObject Magnitude")
                 if oid in self._magnitude:
                     # *update* the existing instance - do *not* overwrite it!
                     self._magnitude[oid].assign(obj)
@@ -160,35 +195,62 @@ class EventClient(Application):
                     self._load_magnitude(oid)
             break
 
-        if not obj: return # probably other type
+        debug("updateObject")
+        if not obj:
+            debug("updateObject return")
+            return # probably other type
 
-        self.log("UPD %-15s object %s   parent: %s" % (obj.ClassName(), oid, parentID))
+        debug("UPD %s %s   parent: %s" % (obj.ClassName(), oid, parentID))
         self.process(obj)
+        debug("updateObject end")
 
 
-    def addObject(self, parentID, object):
+    def addObject(self, parentID, added):
+#       debug("addObject start")
         # called if a new object is received
         for tp in [ Magnitude, Origin, Event ]:
-            obj = tp.Cast(object)
+            obj = tp.Cast(added)
             if not obj:
                 continue
 
             oid = obj.publicID()
 
+            debug("updateObject start %s  oid=%s" % (obj.ClassName(), oid))
+
+            # Im Prinzip wurde ich erwarten, dass bei addObject hier
+            # immer tmp==None is. 
+            tmp = PublicObject.Find(oid)
+            if tmp:
+#               error("%s %s   tmp NOT None" % (tmp.ClassName(), oid))
+#               error("%s %s   registered=%s" % (tmp.ClassName(), oid, str(tmp.registered())))
+#               error("%s %s   == =%s" % (tmp.ClassName(), oid, str(tmp==obj)))
+                # can we get rid of this?
+                tmp = tp.Cast(tmp)
+                tmp.assign(obj)
+                obj = tmp
+
             if tp is Event:
-                assert oid not in self._event
+                if oid in self._event:
+                    error("event %s already in self._event" % oid)
                 self._event[oid] = obj
             elif tp is Origin:
-                assert oid not in self._origin
+                if oid in self._origin:
+                    error("origin %s already in self._origin" % oid)
+#               assert oid not in self._origin
                 self._origin[oid] = obj
             elif tp is Magnitude:
-                assert oid not in self._magnitude
+                if oid in self._magnitude:
+                    error("magnitude %s already in self._magnitude" % oid)
+#               assert oid not in self._magnitude
                 self._magnitude[oid] = obj
 
-        if not obj: return # probably other type
+        if not obj:
+#           debug("addObject return")
+            return # probably other type
 
-        self.log("NEW %-15s object %s   parent: %s" % (obj.ClassName(), oid, parentID))
+        debug("NEW %s %s   parent: %s" % (obj.ClassName(), oid, parentID))
         self.process(obj)
+        debug("addObject end")
 
 
 app = EventClient()
