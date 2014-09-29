@@ -8,6 +8,7 @@ from seiscomp3.Logging import info, debug, error
 class EventClient(Application):
 
     def __init__(self):
+
         Application.__init__(self, len(sys.argv), sys.argv)
         self.setMessagingEnabled(True)
         self.setDatabaseEnabled(True, True)
@@ -17,7 +18,7 @@ class EventClient(Application):
         self.addMessagingSubscription("MAGNITUDE")
         self.setAutoApplyNotifierEnabled(True)
 
-        # object buffer, FIXME: clean-up of old/unreferenced objects still missing!
+        # object buffers
         self._event = {}
         self._origin = {}
         self._magnitude = {}
@@ -26,6 +27,7 @@ class EventClient(Application):
         self._preferredOriginID = {}
         self._preferredMagnitudeID = {}
         self._cleanupCounter = 0
+        print>>sys.stderr, self.changed_origin
 
 
     def cleanup(self):
@@ -90,17 +92,11 @@ class EventClient(Application):
         self._cleanupCounter = 0
 
     def changed_origin(self, event_id, previous_id, current_id):
-        info("event %s: CHANGED preferredOriginID" % event_id)
-        info("    from %s" % previous_id)
-        info("      to %s" % current_id)
-        self.cleanup()
+        raise NotImplementedError
 
 
     def changed_magnitude(self, event_id, previous_id, current_id):
-        info("event %s: CHANGED preferredMagnitudeID" % event_id)
-        info("    from %s" % previous_id)
-        info("      to %s" % current_id)
-        self.cleanup()
+        raise NotImplementedError
 
 
     def _process_event(self, obj):
@@ -285,7 +281,3 @@ class EventClient(Application):
         debug("NEW %s %s   parent: %s" % (obj.ClassName(), oid, parentID))
         self.process(obj)
         debug("addObject end")
-
-
-app = EventClient()
-sys.exit(app())
