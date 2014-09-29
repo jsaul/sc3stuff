@@ -30,14 +30,19 @@ class EventClient(Application):
 
     def cleanup(self):
         self._cleanupCounter += 1
-        if self._cleanupCounter < 100:
+        if self._cleanupCounter < 50:
             return
+        # we first remove those origins and magnitudes, which are
+        # older than one hour and are not preferred anywhere.
         limit = Time.GMT() + TimeSpan(-3600)
         preferredOriginIDs = []
         preferredMagnitudeIDs = []
         for oid in self._event:
-            preferredOriginIDs.append(self._preferredOriginID[oid])
-            preferredMagnitudeIDs.append(self._preferredMagnitudeID[oid])
+            try:
+                preferredOriginIDs.append(self._preferredOriginID[oid])
+                preferredMagnitudeIDs.append(self._preferredMagnitudeID[oid])
+            except KeyError: # FIXME
+                continue
         originIDs = self._origin.keys()
         for oid in originIDs:
             if oid not in preferredOriginIDs:
@@ -46,13 +51,42 @@ class EventClient(Application):
         magnitudeIDs = self._magnitude.keys()
         for oid in magnitudeIDs:
             if oid not in preferredMagnitudeIDs:
-                if self._magnitude[oid] == None:
+                print>>sys.stderr, self._magnitude[oid]
+                print>>sys.stderr, not self._magnitude[oid]
+                print>>sys.stderr, self._magnitude[oid] is None
+#               if self._magnitude[oid] == None:
+                if not self._magnitude[oid]:
                     # This should actually never happen!
-                    error("Magnitude %s is NULL!" % oid)
+                    error("Magnitude %s is %s!" % (oid, type(self._magnitude[oid])))
                     del self._magnitude[oid]
                     continue
                 if self._magnitude[oid].creationInfo().creationTime() < limit:
                     del self._magnitude[oid]
+
+        # finally remove all remaining objects older than two hours
+        limit = Time.GMT() + TimeSpan(-3600)
+        to_delete = []
+        for evid in self._event:
+            poid = self._preferredOriginID[evid]
+            pmid = self._preferredMagnitudeID[evid]
+            org = self._origin[poid]
+            if org.time().value() > limit:
+                continue # nothing to do with this event
+            to_delete.append(evid)
+        for evid in to_delete:
+            del self._origin[self._preferredOriginID[evid]]
+            del self._magnitude[self._preferredMagnitudeID[evid]]
+            del self._preferredOriginID[evid]
+            del self._preferredMagnitudeID[evid]
+            del _event[evid]
+
+        info("After cleanup:")
+        info("   _event                 %d" % len(self._event))
+        info("   _origin                %d" % len(self._origin))
+        info("   _magnitude             %d" % len(self._magnitude))
+        info("   _preferredOriginID     %d" % len(self._OriginMagnitudeID))
+        info("   _preferredMagnitudeID  %d" % len(self._preferredMagnitudeID))
+
         self._cleanupCounter = 0
 
     def changed_origin(self, event_id, previous_id, current_id):
