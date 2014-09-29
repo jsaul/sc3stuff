@@ -57,9 +57,9 @@ class EventClient(Application):
                 print>>sys.stderr, not self._magnitude[oid]
                 print>>sys.stderr, self._magnitude[oid] is None
 #               if self._magnitude[oid] == None:
-                if not self._magnitude[oid]:
+                if self._magnitude[oid] is None:
                     # This should actually never happen!
-                    error("Magnitude %s is %s!" % (oid, type(self._magnitude[oid])))
+                    error("Magnitude %s is None!" % oid)
                     del self._magnitude[oid]
                     continue
                 if self._magnitude[oid].creationInfo().creationTime() < limit:
@@ -92,10 +92,12 @@ class EventClient(Application):
         self._cleanupCounter = 0
 
     def changed_origin(self, event_id, previous_id, current_id):
+        # to be implemented in a derived class
         raise NotImplementedError
 
 
     def changed_magnitude(self, event_id, previous_id, current_id):
+        # to be implemented in a derived class
         raise NotImplementedError
 
 
