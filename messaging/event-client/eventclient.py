@@ -32,11 +32,18 @@ class EventClient(Application):
 
     def cleanup(self):
         self._cleanupCounter += 1
-        if self._cleanupCounter < 50:
+        if self._cleanupCounter < 5:
             return
+        info("before cleanup:")
+        info("   _event                 %d" % len(self._event))
+        info("   _origin                %d" % len(self._origin))
+        info("   _magnitude             %d" % len(self._magnitude))
+        info("   _preferredOriginID     %d" % len(self._preferredOriginID))
+        info("   _preferredMagnitudeID  %d" % len(self._preferredMagnitudeID))
+        info("   public object count    %d" % (PublicObject.ObjectCount()))
         # we first remove those origins and magnitudes, which are
         # older than one hour and are not preferred anywhere.
-        limit = Time.GMT() + TimeSpan(-3600)
+        limit = Time.GMT() + TimeSpan(-360)
         preferredOriginIDs = []
         preferredMagnitudeIDs = []
         for oid in self._event:
@@ -53,10 +60,6 @@ class EventClient(Application):
         magnitudeIDs = self._magnitude.keys()
         for oid in magnitudeIDs:
             if oid not in preferredMagnitudeIDs:
-                print>>sys.stderr, self._magnitude[oid]
-                print>>sys.stderr, not self._magnitude[oid]
-                print>>sys.stderr, self._magnitude[oid] is None
-#               if self._magnitude[oid] == None:
                 if self._magnitude[oid] is None:
                     # This should actually never happen!
                     error("Magnitude %s is None!" % oid)
@@ -66,7 +69,7 @@ class EventClient(Application):
                     del self._magnitude[oid]
 
         # finally remove all remaining objects older than two hours
-        limit = Time.GMT() + TimeSpan(-3600)
+        limit = Time.GMT() + TimeSpan(-720)
         to_delete = []
         for evid in self._event:
             poid = self._preferredOriginID[evid]
@@ -80,15 +83,16 @@ class EventClient(Application):
             del self._magnitude[self._preferredMagnitudeID[evid]]
             del self._preferredOriginID[evid]
             del self._preferredMagnitudeID[evid]
-            del _event[evid]
+            del self._event[evid]
 
         info("After cleanup:")
         info("   _event                 %d" % len(self._event))
         info("   _origin                %d" % len(self._origin))
         info("   _magnitude             %d" % len(self._magnitude))
-        info("   _preferredOriginID     %d" % len(self._OriginMagnitudeID))
+        info("   _preferredOriginID     %d" % len(self._preferredOriginID))
         info("   _preferredMagnitudeID  %d" % len(self._preferredMagnitudeID))
-
+        info("   public object count    %d" % (PublicObject.ObjectCount()))
+        info("-------------------------------")
         self._cleanupCounter = 0
 
     def changed_origin(self, event_id, previous_id, current_id):
@@ -193,93 +197,85 @@ class EventClient(Application):
         for tp in [ Magnitude, Origin, Event ]:
             # try to convert to any of the above types
             obj = tp.Cast(updated)
-            if not obj:
-                continue
+            if obj:
+                break
 
-            oid = obj.publicID()
-
-            debug("updateObject start %s  oid=%s" % (obj.ClassName(), oid))
-
-            # our utility may have been offline during addObject, so we need to check
-            # whether this is the first time that we see this object.
-            # If that is the case, we load that object from the database in order to
-            # be sure that we are working with the complete object.
-            if tp is Event:
-                debug("updateObject Event")
-                if oid in self._event:
-                    # *update* the existing instance - do *not* overwrite it!
-                    self._event[oid].assign(obj)
-                else:
-                    self._load_event(oid)
-            elif tp is Origin:
-                debug("updateObject Origin")
-                if oid in self._origin:
-                    # *update* the existing instance - do *not* overwrite it!
-                    self._origin[oid].assign(obj)
-                else:
-                    self._load_origin(oid)
-            elif tp is Magnitude:
-                debug("updateObject Magnitude")
-                if oid in self._magnitude:
-                    # *update* the existing instance - do *not* overwrite it!
-                    self._magnitude[oid].assign(obj)
-                else:
-                    self._load_magnitude(oid)
-            break
-
-        debug("updateObject")
         if not obj:
-            debug("updateObject return")
-            return # probably other type
+            return
 
-        debug("UPD %s %s   parent: %s" % (obj.ClassName(), oid, parentID))
+        oid = obj.publicID()
+
+        debug("updateObject start %s  oid=%s" % (obj.ClassName(), oid))
+
+        # our utility may have been offline during addObject, so we
+        # need to check whether this is the first time that we see
+        # this object. If that is the case, we load that object from
+        # the database in order to be sure that we are working with
+        # the complete object.
+        if tp is Event:
+            debug("updateObject Event")
+            if oid in self._event:
+                # *update* the existing instance - do *not* overwrite it!
+                self._event[oid].assign(obj)
+            else:
+                self._load_event(oid)
+        elif tp is Origin:
+            debug("updateObject Origin")
+            if oid in self._origin:
+                # *update* the existing instance - do *not* overwrite it!
+                self._origin[oid].assign(obj)
+            else:
+                self._load_origin(oid)
+        elif tp is Magnitude:
+            debug("updateObject Magnitude")
+            if oid in self._magnitude:
+                # *update* the existing instance - do *not* overwrite it!
+                self._magnitude[oid].assign(obj)
+            else:
+                self._load_magnitude(oid)
+
         self.process(obj)
         debug("updateObject end")
 
 
     def addObject(self, parentID, added):
-#       debug("addObject start")
         # called if a new object is received
         for tp in [ Magnitude, Origin, Event ]:
             obj = tp.Cast(added)
-            if not obj:
-                continue
-
-            oid = obj.publicID()
-
-            debug("updateObject start %s  oid=%s" % (obj.ClassName(), oid))
-
-            # Im Prinzip wurde ich erwarten, dass bei addObject hier
-            # immer tmp==None is. 
-            tmp = PublicObject.Find(oid)
-            if tmp:
-#               error("%s %s   tmp NOT None" % (tmp.ClassName(), oid))
-#               error("%s %s   registered=%s" % (tmp.ClassName(), oid, str(tmp.registered())))
-#               error("%s %s   == =%s" % (tmp.ClassName(), oid, str(tmp==obj)))
-                # can we get rid of this?
-                tmp = tp.Cast(tmp)
-                tmp.assign(obj)
-                obj = tmp
-
-            if tp is Event:
-                if oid in self._event:
-                    error("event %s already in self._event" % oid)
-                self._event[oid] = obj
-            elif tp is Origin:
-                if oid in self._origin:
-                    error("origin %s already in self._origin" % oid)
-#               assert oid not in self._origin
-                self._origin[oid] = obj
-            elif tp is Magnitude:
-                if oid in self._magnitude:
-                    error("magnitude %s already in self._magnitude" % oid)
-#               assert oid not in self._magnitude
-                self._magnitude[oid] = obj
+            if obj:
+                break
 
         if not obj:
-#           debug("addObject return")
-            return # probably other type
+            return
 
-        debug("NEW %s %s   parent: %s" % (obj.ClassName(), oid, parentID))
+        oid = obj.publicID()
+
+        debug("addObject start %s  oid=%s" % (obj.ClassName(), oid))
+
+        tmp = PublicObject.Find(oid)
+        if not tmp:
+            error("PublicObject.Find failed on %s %s" % (tmp.ClassName(), oid))
+            return
+        # can we get rid of this?
+        tmp = tp.Cast(tmp)
+        tmp.assign(obj)
+        obj = tmp
+
+        if tp is Event:
+            if oid not in self._event:
+                self._event[oid] = obj
+            else:
+                error("event %s already in self._event" % oid)
+        elif tp is Origin:
+            if oid not in self._origin:
+                self._origin[oid] = obj
+            else:
+                error("origin %s already in self._origin" % oid)
+        elif tp is Magnitude:
+            if oid not in self._magnitude:
+                self._magnitude[oid] = obj
+            else:
+                error("magnitude %s already in self._magnitude" % oid)
+
         self.process(obj)
         debug("addObject end")
