@@ -27,8 +27,8 @@ class EventClient(Application):
         self._preferredOriginID = {}
         self._preferredMagnitudeID = {}
         self._cleanupCounter = 0
-        print>>sys.stderr, self.changed_origin
-
+        self.xdebug = False 
+        self._cleanup_interval = 3600.
 
     def cleanup(self):
         self._cleanupCounter += 1
@@ -43,7 +43,7 @@ class EventClient(Application):
         info("   public object count    %d" % (PublicObject.ObjectCount()))
         # we first remove those origins and magnitudes, which are
         # older than one hour and are not preferred anywhere.
-        limit = Time.GMT() + TimeSpan(-360)
+        limit = Time.GMT() + TimeSpan(-self._cleanup_interval)
         preferredOriginIDs = []
         preferredMagnitudeIDs = []
         for oid in self._event:
@@ -69,7 +69,7 @@ class EventClient(Application):
                     del self._magnitude[oid]
 
         # finally remove all remaining objects older than two hours
-        limit = Time.GMT() + TimeSpan(-720)
+        limit = Time.GMT() + TimeSpan(-2*self._cleanup_interval)
         to_delete = []
         for evid in self._event:
             poid = self._preferredOriginID[evid]
@@ -106,7 +106,8 @@ class EventClient(Application):
 
 
     def _process_event(self, obj):
-        debug("_process_event %s start" % obj.publicID())
+        if self.xdebug:
+            debug("_process_event %s start" % obj.publicID())
 
         try:
             previous_preferredOriginID = self._preferredOriginID[obj.publicID()]
@@ -144,7 +145,8 @@ class EventClient(Application):
             if preferredMagnitudeID != previous_preferredMagnitudeID:
                 self.changed_magnitude(obj.publicID(), previous_preferredMagnitudeID, preferredMagnitudeID)
         # TODO: Do some real work here :-)
-        debug("_process_event %s end" % obj.publicID())
+        if self.xdebug:
+            debug("_process_event %s end" % obj.publicID())
 
 
     def _process_origin(self, obj):
@@ -175,7 +177,8 @@ class EventClient(Application):
 
 
     def process(self, obj):
-        debug("process start")
+        if self.xdebug:
+            debug("process start")
         try:
             if obj.ClassName() == "Event":
                 obj = self._event[obj.publicID()]
@@ -189,7 +192,8 @@ class EventClient(Application):
         except:
             info = traceback.format_exception(*sys.exc_info())
             for i in info: sys.stderr.write(i)
-        debug("process end")
+        if self.xdebug:
+            debug("process end")
                 
 
     def updateObject(self, parentID, updated):
@@ -205,7 +209,8 @@ class EventClient(Application):
 
         oid = obj.publicID()
 
-        debug("updateObject start %s  oid=%s" % (obj.ClassName(), oid))
+        if self.xdebug:
+            debug("updateObject start %s  oid=%s" % (obj.ClassName(), oid))
 
         # our utility may have been offline during addObject, so we
         # need to check whether this is the first time that we see
@@ -213,21 +218,21 @@ class EventClient(Application):
         # the database in order to be sure that we are working with
         # the complete object.
         if tp is Event:
-            debug("updateObject Event")
+#           debug("updateObject Event")
             if oid in self._event:
                 # *update* the existing instance - do *not* overwrite it!
                 self._event[oid].assign(obj)
             else:
                 self._load_event(oid)
         elif tp is Origin:
-            debug("updateObject Origin")
+#           debug("updateObject Origin")
             if oid in self._origin:
                 # *update* the existing instance - do *not* overwrite it!
                 self._origin[oid].assign(obj)
             else:
                 self._load_origin(oid)
         elif tp is Magnitude:
-            debug("updateObject Magnitude")
+#           debug("updateObject Magnitude")
             if oid in self._magnitude:
                 # *update* the existing instance - do *not* overwrite it!
                 self._magnitude[oid].assign(obj)
@@ -235,7 +240,8 @@ class EventClient(Application):
                 self._load_magnitude(oid)
 
         self.process(obj)
-        debug("updateObject end")
+        if self.xdebug:
+            debug("updateObject end")
 
 
     def addObject(self, parentID, added):
@@ -250,7 +256,8 @@ class EventClient(Application):
 
         oid = obj.publicID()
 
-        debug("addObject start %s  oid=%s" % (obj.ClassName(), oid))
+        if self.xdebug:
+            debug("addObject start %s  oid=%s" % (obj.ClassName(), oid))
 
         tmp = PublicObject.Find(oid)
         if not tmp:
@@ -278,4 +285,5 @@ class EventClient(Application):
                 error("magnitude %s already in self._magnitude" % oid)
 
         self.process(obj)
-        debug("addObject end")
+        if self.xdebug:
+            debug("addObject end")
