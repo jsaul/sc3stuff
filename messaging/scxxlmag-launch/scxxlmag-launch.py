@@ -6,7 +6,7 @@ class Launcher(EventClient):
 
     def __init__(self):
         EventClient.__init__(self)
-        self._program = './scxxl-wrap.sh %s'
+        self._program = './scxxlmap-wrap.sh %s'
         self._minmag = 5.0
         self._maxdep = 150.
         self._launched = []
