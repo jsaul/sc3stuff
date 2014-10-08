@@ -1,5 +1,5 @@
 import sys, os, traceback
-from eventclient import EventClient, info,error,debug
+from eventclient import EventClient, info, warning, error, debug
 
 
 class Launcher(EventClient):
@@ -16,7 +16,6 @@ class Launcher(EventClient):
         info("event %s: CHANGED preferredOriginID" % event_id)
         info("    from %s" % previous_id)
         info("      to %s" % current_id)
-        self.cleanup()
 #       self.launch(event_id)
 
 
@@ -25,17 +24,19 @@ class Launcher(EventClient):
         info("event %s: CHANGED preferredMagnitudeID" % event_id)
         info("    from %s" % previous_id)
         info("      to %s" % current_id)
-        self.cleanup()
         self.launch(event_id)
 
 
     def launch(self, event_id):
         if event_id in self._launched:
             return # nothing to do any more
-        org = self._origin[self._preferredOriginID[event_id]]
-        dep = org.depth().value()
-        mag = self._magnitude[self._preferredMagnitudeID[event_id]]
-        mag = mag.magnitude().value()
+        ste = self._state[event_id]
+        try:
+            dep = self._state[event_id].origin.depth().value()
+            mag = self._state[event_id].magnitude.magnitude().value()
+        except AttributeError:
+            warning("Launcher.launch event %s incomplete" % event_id)
+            return
         if dep > self._maxdep:
             info("Launcher.launch event %s too deep" % event_id)
             return
@@ -48,6 +49,7 @@ class Launcher(EventClient):
         info("starting '%s'" % cmd)
         os.system(cmd)
         self._launched.append(event_id) 
+
 
 app = Launcher()
 sys.exit(app())
