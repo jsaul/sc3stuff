@@ -3,12 +3,24 @@ from seiscomp3.Core import Time, TimeSpan
 from seiscomp3.Client import Application
 from seiscomp3.DataModel import Event, Origin, Magnitude, PublicObject
 from seiscomp3.Communication import Protocol 
-from seiscomp3.Logging import info, debug, error
+from seiscomp3.Logging import info, debug, warning, error
+
+
+# Compound event with preferred origin/magnitude on board as well as some relevant state variables
+class EventState:
+    __slots__ = ("event", "origin", "magnitude", "preferredOriginID", "preferredMagnitudeID")
+
+    def __init__(self, evt=None):
+        self.event = evt
+        self.origin = None
+        self.magnitude = None
+        self.preferredOriginID = None
+        self.preferredMagnitudeID = None
+
 
 class EventClient(Application):
 
     def __init__(self):
-
         Application.__init__(self, len(sys.argv), sys.argv)
         self.setMessagingEnabled(True)
         self.setDatabaseEnabled(True, True)
@@ -19,81 +31,60 @@ class EventClient(Application):
         self.setAutoApplyNotifierEnabled(True)
 
         # object buffers
-        self._event = {}
+        self._state = {}
         self._origin = {}
         self._magnitude = {}
 
-        # event id is the key for these dicts
-        self._preferredOriginID = {}
-        self._preferredMagnitudeID = {}
         self._cleanupCounter = 0
-        self.xdebug = False 
+        self._xdebug = False
         self._cleanup_interval = 3600.
+
 
     def cleanup(self):
         self._cleanupCounter += 1
         if self._cleanupCounter < 5:
             return
         info("before cleanup:")
-        info("   _event                 %d" % len(self._event))
-        info("   _origin                %d" % len(self._origin))
-        info("   _magnitude             %d" % len(self._magnitude))
-        info("   _preferredOriginID     %d" % len(self._preferredOriginID))
-        info("   _preferredMagnitudeID  %d" % len(self._preferredMagnitudeID))
-        info("   public object count    %d" % (PublicObject.ObjectCount()))
+        info("   _state               %d" % len(self._state))
+        info("   _origin              %d" % len(self._origin))
+        info("   _magnitude           %d" % len(self._magnitude))
+        info("   public object count  %d" % (PublicObject.ObjectCount()))
         # we first remove those origins and magnitudes, which are
         # older than one hour and are not preferred anywhere.
         limit = Time.GMT() + TimeSpan(-self._cleanup_interval)
-        preferredOriginIDs = []
-        preferredMagnitudeIDs = []
-        for oid in self._event:
-            try:
-                preferredOriginIDs.append(self._preferredOriginID[oid])
-                preferredMagnitudeIDs.append(self._preferredMagnitudeID[oid])
-            except KeyError: # FIXME
-                continue
         originIDs = self._origin.keys()
         for oid in originIDs:
-            if oid not in preferredOriginIDs:
-                if self._origin[oid].creationInfo().creationTime() < limit:
-                    del self._origin[oid]
+            if self._origin[oid].creationInfo().creationTime() < limit:
+                del self._origin[oid]
         magnitudeIDs = self._magnitude.keys()
         for oid in magnitudeIDs:
-            if oid not in preferredMagnitudeIDs:
-                if self._magnitude[oid] is None:
-                    # This should actually never happen!
-                    error("Magnitude %s is None!" % oid)
-                    del self._magnitude[oid]
-                    continue
-                if self._magnitude[oid].creationInfo().creationTime() < limit:
-                    del self._magnitude[oid]
+            if self._magnitude[oid] is None:
+                # This should actually never happen!
+                error("Magnitude %s is None!" % oid)
+                del self._magnitude[oid]
+                continue
+            if self._magnitude[oid].creationInfo().creationTime() < limit:
+                del self._magnitude[oid]
 
         # finally remove all remaining objects older than two hours
         limit = Time.GMT() + TimeSpan(-2*self._cleanup_interval)
         to_delete = []
-        for evid in self._event:
-            poid = self._preferredOriginID[evid]
-            pmid = self._preferredMagnitudeID[evid]
-            org = self._origin[poid]
-            if org.time().value() > limit:
+        for evid in self._state:
+            org = self._state[evid].origin
+            if org and org.time().value() > limit:
                 continue # nothing to do with this event
             to_delete.append(evid)
         for evid in to_delete:
-            del self._origin[self._preferredOriginID[evid]]
-            del self._magnitude[self._preferredMagnitudeID[evid]]
-            del self._preferredOriginID[evid]
-            del self._preferredMagnitudeID[evid]
-            del self._event[evid]
+            del self._state[evid]
 
         info("After cleanup:")
-        info("   _event                 %d" % len(self._event))
-        info("   _origin                %d" % len(self._origin))
-        info("   _magnitude             %d" % len(self._magnitude))
-        info("   _preferredOriginID     %d" % len(self._preferredOriginID))
-        info("   _preferredMagnitudeID  %d" % len(self._preferredMagnitudeID))
-        info("   public object count    %d" % (PublicObject.ObjectCount()))
+        info("   _state               %d" % len(self._state))
+        info("   _origin              %d" % len(self._origin))
+        info("   _magnitude           %d" % len(self._magnitude))
+        info("   public object count  %d" % (PublicObject.ObjectCount()))
         info("-------------------------------")
         self._cleanupCounter = 0
+
 
     def changed_origin(self, event_id, previous_id, current_id):
         # to be implemented in a derived class
@@ -105,56 +96,16 @@ class EventClient(Application):
         raise NotImplementedError
 
 
-    def _process_event(self, obj):
-        if self.xdebug:
-            debug("_process_event %s start" % obj.publicID())
-
-        try:
-            previous_preferredOriginID = self._preferredOriginID[obj.publicID()]
-        except KeyError:
-            previous_preferredOriginID = None
-
-        try:
-            previous_preferredMagnitudeID = self._preferredMagnitudeID[obj.publicID()]
-        except KeyError:
-            previous_preferredMagnitudeID = None
-
-        preferredOriginID = obj.preferredOriginID()
-        preferredMagnitudeID = obj.preferredMagnitudeID()
-
-        # check if we have the origin/magnitude we have set preferred
-        if preferredOriginID not in self._origin:
-            self._load_origin(preferredOriginID)
-
-        if preferredMagnitudeID not in self._magnitude:
-            self._load_magnitude(preferredMagnitudeID)
-
-        # update preferredOriginID and preferredMagnitudeID
-        self._preferredOriginID[obj.publicID()] = preferredOriginID
-        self._preferredMagnitudeID[obj.publicID()] = preferredMagnitudeID
+    def _get_origin(self, oid):
+        if oid not in self._origin:
+             self._load_origin(oid)
+        return self._origin[oid]
 
 
-        # Test, whether there has been any (for us!) relevant
-        # changes in the event. We test for preferredOriginID
-        # and preferredMagnitudeID.
-        if previous_preferredOriginID:
-            if preferredOriginID != previous_preferredOriginID:
-                self.changed_origin(obj.publicID(), previous_preferredOriginID, preferredOriginID)
-
-        if previous_preferredMagnitudeID:
-            if preferredMagnitudeID != previous_preferredMagnitudeID:
-                self.changed_magnitude(obj.publicID(), previous_preferredMagnitudeID, preferredMagnitudeID)
-        # TODO: Do some real work here :-)
-        if self.xdebug:
-            debug("_process_event %s end" % obj.publicID())
-
-
-    def _process_origin(self, obj):
-        pass # currently nothing to do here
-
-
-    def _process_magnitude(self, obj):
-        pass # currently nothing to do here
+    def _get_magnitude(self, oid):
+        if oid not in self._magnitude:
+             self._load_magnitude(oid)
+        return self._magnitude[oid]
 
 
     def _load(self, oid, tp):
@@ -165,7 +116,11 @@ class EventClient(Application):
 
 
     def _load_event(self, oid):
-        self._event[oid] = self._load(oid, Event)
+        evt = self._load(oid, Event)
+        self._state[oid] = EventState(evt)
+        # if we do this here, then we override the preferred* here and are not able to detect the difference!
+        self._state[oid].origin = self._get_origin(evt.preferredOriginID())
+        self._state[oid].magnitude = self._get_magnitude(evt.preferredMagnitudeID())
 
 
     def _load_origin(self, oid):
@@ -176,25 +131,52 @@ class EventClient(Application):
         self._magnitude[oid] = self._load(oid, Magnitude)
 
 
-    def process(self, obj):
-        if self.xdebug:
-            debug("process start")
-        try:
-            if obj.ClassName() == "Event":
-                obj = self._event[obj.publicID()]
-                self._process_event(obj)
-            elif obj.ClassName() == "Origin":
-                obj = self._origin[obj.publicID()]
-                self._process_origin(obj)
-            elif obj.ClassName() == "Magnitude":
-                obj = self._magnitude[obj.publicID()]
-                self._process_magnitude(obj)
-        except:
-            info = traceback.format_exception(*sys.exc_info())
-            for i in info: sys.stderr.write(i)
-        if self.xdebug:
-            debug("process end")
-                
+    def _process_event(self, evt):
+        evid = evt.publicID()
+
+        if self._xdebug:
+            debug("_process_event %s start" % evid)
+
+        st = self._state[evid]
+        previous_preferredOriginID = st.preferredOriginID
+        previous_preferredMagnitudeID = st.preferredMagnitudeID
+
+        # possibly updated preferredOriginID/preferredMagnitudeID
+        preferredOriginID = evt.preferredOriginID()
+        preferredMagnitudeID = evt.preferredMagnitudeID()
+
+        info("%s preferredOriginID    %s  %s" % (evid, previous_preferredOriginID, preferredOriginID))
+        info("%s preferredMagnitudeID %s  %s" % (evid, previous_preferredMagnitudeID, preferredMagnitudeID))
+
+
+        # Test whether there have been any (for us!) relevant
+        # changes in the event. We test for preferredOriginID
+        # and preferredMagnitudeID.
+        if preferredOriginID != previous_preferredOriginID:
+            st.origin = self._get_origin(preferredOriginID)
+            self.changed_origin(evid, previous_preferredOriginID, preferredOriginID)
+            st.preferredOriginID = preferredOriginID
+
+        if preferredMagnitudeID != previous_preferredMagnitudeID:
+            st.magnitude = self._get_magnitude(preferredMagnitudeID)
+            self.changed_magnitude(evid, previous_preferredMagnitudeID, preferredMagnitudeID)
+            st.preferredMagnitudeID = preferredMagnitudeID
+
+        self.cleanup()
+
+        if self._xdebug:
+            debug("_process_event %s end" % evid)
+
+
+    def _process_origin(self, obj):
+#       self.cleanup()
+        pass # currently nothing to do here
+
+
+    def _process_magnitude(self, obj):
+#       self.cleanup()
+        pass # currently nothing to do here
+
 
     def updateObject(self, parentID, updated):
         # called if an updated object is received
@@ -209,7 +191,7 @@ class EventClient(Application):
 
         oid = obj.publicID()
 
-        if self.xdebug:
+        if self._xdebug:
             debug("updateObject start %s  oid=%s" % (obj.ClassName(), oid))
 
         # our utility may have been offline during addObject, so we
@@ -218,29 +200,30 @@ class EventClient(Application):
         # the database in order to be sure that we are working with
         # the complete object.
         if tp is Event:
-#           debug("updateObject Event")
-            if oid in self._event:
+            if oid in self._state:
                 # *update* the existing instance - do *not* overwrite it!
-                self._event[oid].assign(obj)
+                self._state[oid].event.assign(obj)
             else:
                 self._load_event(oid)
+            self._process_event(obj)
+
         elif tp is Origin:
-#           debug("updateObject Origin")
             if oid in self._origin:
                 # *update* the existing instance - do *not* overwrite it!
                 self._origin[oid].assign(obj)
             else:
                 self._load_origin(oid)
+            self._process_origin(obj)
+
         elif tp is Magnitude:
-#           debug("updateObject Magnitude")
             if oid in self._magnitude:
                 # *update* the existing instance - do *not* overwrite it!
                 self._magnitude[oid].assign(obj)
             else:
                 self._load_magnitude(oid)
+            self._process_magnitude(obj)
 
-        self.process(obj)
-        if self.xdebug:
+        if self._xdebug:
             debug("updateObject end")
 
 
@@ -256,7 +239,7 @@ class EventClient(Application):
 
         oid = obj.publicID()
 
-        if self.xdebug:
+        if self._xdebug:
             debug("addObject start %s  oid=%s" % (obj.ClassName(), oid))
 
         tmp = PublicObject.Find(oid)
@@ -269,21 +252,27 @@ class EventClient(Application):
         obj = tmp
 
         if tp is Event:
-            if oid not in self._event:
-                self._event[oid] = obj
+            if oid not in self._state:
+                self._state[oid] = EventState(obj)
+                self._state[oid].origin = self._get_origin(obj.preferredOriginID())
+                self._state[oid].magnitude = self._get_magnitude(obj.preferredMagnitudeID())
             else:
-                error("event %s already in self._event" % oid)
+                error("event %s already in self._state" % oid)
+            self._process_event(obj)
+
         elif tp is Origin:
             if oid not in self._origin:
                 self._origin[oid] = obj
             else:
                 error("origin %s already in self._origin" % oid)
+            self._process_origin(obj)
+
         elif tp is Magnitude:
             if oid not in self._magnitude:
                 self._magnitude[oid] = obj
             else:
                 error("magnitude %s already in self._magnitude" % oid)
+            self._process_magnitude(obj)
 
-        self.process(obj)
-        if self.xdebug:
+        if self._xdebug:
             debug("addObject end")
