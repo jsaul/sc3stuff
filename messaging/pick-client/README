@@ -1,6 +1,6 @@
 This is a minimalistic script to demonstrate how to connect to the
 SeisComP 3 messaging and to receive and process messages. It handles
-the very simple (nearly trivial) case of a pick and the only thing
-is does is dump a few informations about the pick to stdout. If you
-want to do something else with the pick (likely you do...), then
-adopt the doSomethingWithPick() method accordingly.
+the very simple (nearly trivial) case of picks and amplitudes and
+the only thing is does is dump a few informations about the objects
+to stdout. If you want to do something else with the objects (likely
+you do...), then adopt the doSomethingWith*() methods accordingly.
