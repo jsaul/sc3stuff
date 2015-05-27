@@ -1,0 +1,24 @@
+dumppicklist.py is a small utility to dump picks read from XML or
+database to YAML. It is invoked
+
+(1) either by specifying the database and an event ID, e.g. something like:
+
+    dumppicklist.py -d mysql://... -E gfz2015....
+
+or (2) by specifying an SC3 XML file and optionally an event ID, e.g.:
+
+    - one event per XML file:
+
+        dumppicklist.py --xml gfz2015abcd.xml
+
+    - more than one event per XML file:
+
+        dumppicklist.py --xml severalevents.xml
+
+    - more than one event per XML file but dump one particular event:
+
+        dumppicklist.py --xml severalevents.xml -E gfz2015abcd
+
+
+dumppicklist.py is meant to be a starting point for own
+modifications so please feel free to adopt it to your needs.
