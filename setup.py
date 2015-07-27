@@ -7,6 +7,6 @@ setup(name = "sc3stuff",
     author = "Joachim Saul",
     author_email = "saul@gfz-potsdam.de",
     packages = ['sc3stuff'],
-    package_data = {'sc3stuff' : ["__init__.py", "util.py"] }
+    package_data = {'sc3stuff' : ["__init__.py", "util.py", "inventory", "eventloader.py"] }
 #   scripts = [ "fdsnxml2sacpz.py" ]
 )
