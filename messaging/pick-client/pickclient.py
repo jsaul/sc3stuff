@@ -11,10 +11,9 @@ def nslc(obj):
 
 class PickClient(seiscomp3.Client.Application):
 
-    def __init__(self):
-        seiscomp3.Client.Application.__init__(self, len(sys.argv), sys.argv)
+    def __init__(self, argc, argv):
+        seiscomp3.Client.Application.__init__(self, argc, argv)
         self.setMessagingEnabled(True)
-        self.setPrimaryMessagingGroup(seiscomp3.Communication.Protocol.LISTENER_GROUP)
         self.addMessagingSubscription("PICK")
         self.addMessagingSubscription("AMPLITUDE")
 
@@ -80,5 +79,5 @@ class PickClient(seiscomp3.Client.Application):
         return seiscomp3.Client.Application.run(self)
 
 if __name__ == "__main__":
-    app = PickClient()
+    app = PickClient(len(sys.argv), sys.argv)
     sys.exit(app())
