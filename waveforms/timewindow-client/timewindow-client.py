@@ -11,12 +11,12 @@ class WaveformApp(seiscomp3.Client.StreamApplication):
         if not seiscomp3.Client.StreamApplication.init(self):
             return False
         now = seiscomp3.Core.Time.GMT()
-        t1 = now + seiscomp3.Core.TimeSpan(-1800)
+        t1 = now + seiscomp3.Core.TimeSpan(-600)
         t2 = now
         stream = self.recordStream()
-        stream.addStream("GE", "UGM",  "", "BHZ", t1, t2)
-        stream.addStream("GE", "KARP", "", "BHZ", t1, t2)
-        stream.addStream("GE", "GHAJ", "", "BHZ", t1, t2)
+        stream.addStream("GE", "KARP", "",   "BHZ", t1, t2)
+        stream.addStream("GE", "GHAJ", "",   "BHZ", t1, t2)
+        stream.addStream("IU", "ANTO", "10", "BHZ", t1, t2)
         return True
 
     def handleRecord(self, rec):
