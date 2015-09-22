@@ -6,16 +6,14 @@ class StreamingApp(seiscomp3.Client.StreamApplication):
         self.setMessagingEnabled(False)
         self.setDatabaseEnabled(False, False)
         self.setLoggingToStdErr(True)
-        self.setDaemonEnabled(False)
-        self.setRecordStreamEnabled(True)
 
     def init(self):
         if not seiscomp3.Client.StreamApplication.init(self):
             return False
         stream = self.recordStream()
-        stream.addStream("GE","MORC","", "HHZ")
-        stream.addStream("GE","KARP","", "HHZ")
-        stream.addStream("GE","GHAJ","", "HHZ")
+        stream.addStream("GE", "UGM",  "", "BHZ")
+        stream.addStream("GE", "KARP", "", "BHZ")
+        stream.addStream("GE", "GHAJ", "", "BHZ")
         return True
 
     def handleRecord(self, rec):
