@@ -2,4 +2,4 @@
 
 . ~/.seiscomp3/env.sh
 
-python pick-client.py -u xyzabc -H geofon-proc
+python pickclient.py -u xyzabc -H geofon-proc --debug
