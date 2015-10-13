@@ -4,8 +4,8 @@ from seiscomp3 import Core, Client, DataModel
 
 class PickSender(Client.Application):
 
-    def __init__(self):
-        Client.Application.__init__(self, len(sys.argv), sys.argv)
+    def __init__(self, argc, argv):
+        Client.Application.__init__(self, argc, argv)
         self.setMessagingEnabled(True)
         self.setDatabaseEnabled(False, False)
         self.setPrimaryMessagingGroup("PICK")
@@ -79,5 +79,6 @@ class PickSender(Client.Application):
         # return to the Application's processing
         return Client.Application.run(self)
 
-app = PickSender()
-sys.exit(app())
+if __name__ == "__main__":
+    app = PickSender(len(sys.argv), sys.argv)
+    sys.exit(app())

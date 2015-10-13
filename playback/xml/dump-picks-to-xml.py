@@ -3,8 +3,8 @@
 ###### configuration #######
 # time window relative to
 # origin time:
-before = 1200.   # 20 min.
-after  = 1800.   # 30 min.
+before = 24*3600.   # 20 min.
+after  = 12*3600.   # 30 min.
 ############################
 
 import sys, traceback
@@ -12,8 +12,8 @@ from seiscomp3 import Core, Client, DataModel, Communication, IO
 
 class PickLoader(Client.Application):
 
-    def __init__(self):
-        Client.Application.__init__(self, len(sys.argv), sys.argv)
+    def __init__(self, argc, argv):
+        Client.Application.__init__(self, argc, argv)
         self.setMessagingEnabled(False)
         self.setDatabaseEnabled(True, False)
         self._startTime = self._endTime = None
@@ -120,7 +120,7 @@ class PickLoader(Client.Application):
             org = DataModel.Origin.Cast(obj)
             ep.add(org)
             sys.stderr.write("loaded %d of %d manual origins\r" % (i,len(self._orids)))
-        print >> sys.stderr, "loaded %d origins                       " % ep.originCount()
+        print >> sys.stderr, "loaded %d manual origins                " % ep.originCount()
 
         # finally dump event parameters as formatted XML archive to stdout
         ar = IO.XMLArchive()
@@ -133,7 +133,7 @@ class PickLoader(Client.Application):
 
 
 def main():
-    app = PickLoader()
+    app = PickLoader(len(sys.argv), sys.argv)
     app()
 
 if __name__ == "__main__":
