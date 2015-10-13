@@ -9,7 +9,7 @@ network_blacklist = ["TE"]
 network_whitelist = [] # all except blacklist
 
 # seconds before and after origin time
-before, after = 1800, 5400
+before, after = 1800, 1*3600+1800
 
 sort = True   # will produce sorted files with ".sorted-mseed" extension
 
