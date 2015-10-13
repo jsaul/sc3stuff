@@ -1,7 +1,8 @@
 #!/bin/sh
 
-. ~/.seiscomp3/env.sh
+debug=--debug
+#debug=
 
 date
-python eventclient.py --debug  -u js.test -H geofon-proc
+seiscomp exec python eventclient.py $debug  -u eventwatch -H geofon-proc 2>&1 | tee log.txt
 date
