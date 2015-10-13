@@ -53,6 +53,7 @@ class PreferredMagnitudeTypeSetterApp(EventLoaderApp):
 #       # i.e. the magnitude is not available for this event
 #       return True
 
+    # see ./src/gui-qt4/libs/seiscomp3/gui/datamodel/eventedit.cpp
 
     def sendJournal(self, action, params):
         j = seiscomp3.DataModel.JournalEntry()
@@ -89,13 +90,16 @@ class PreferredMagnitudeTypeSetterApp(EventLoaderApp):
         event, origin, pick, ampl, fm = sc3stuff.util.extractEventParameters(self._ep, self._eventID)
 #       print(event, origin)
 
-        if self._magType == "Mw":
-            return self.fixMw()
+        if self._magType is not None:
+            if self._magType == "Mw":
+                return self.fixMw()
 
-        if self._magType[0].upper() == "M":
-            return self.fixMagnitudeType(self._magType)
+            if self._magType[0].upper() == "M":
+                return self.fixMagnitudeType(self._magType)
 
-        raise ValueError, "Don't know what to do with magnitude %s" % self._magType
+            raise ValueError, "Don't know what to do with magnitude %s" % self._magType
+
+        return True
 
 
 def main():
