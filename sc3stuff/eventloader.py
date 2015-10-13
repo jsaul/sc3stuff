@@ -11,7 +11,6 @@
 
 from __future__ import print_function
 
-import sys, traceback, socket
 import seiscomp3.Client, seiscomp3.DataModel
 import sc3stuff.util
 
