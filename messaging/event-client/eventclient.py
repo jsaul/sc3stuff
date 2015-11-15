@@ -141,6 +141,8 @@ class EventClient(Application):
 
 
     def _load(self, oid, tp):
+        assert oid is not None
+        debug("trying to load %s %s" % (str(tp), oid))
         tmp = tp.Cast(self.query().loadObject(tp.TypeInfo(), oid))
         if tmp:
             debug("loaded %s %s" % (tmp.ClassName(), oid))
@@ -203,17 +205,17 @@ class EventClient(Application):
         # Test whether there have been any (for us!) relevant
         # changes in the event. We test for preferredOriginID,
         # preferredMagnitudeID and preferredFocalMechanismID
-        if preferredOriginID != previous_preferredOriginID:
+        if preferredOriginID is not None and preferredOriginID != previous_preferredOriginID:
             st.origin = self._get_origin(preferredOriginID)
             self.changed_origin(evid, previous_preferredOriginID, preferredOriginID)
             st.preferredOriginID = preferredOriginID
 
-        if preferredMagnitudeID != previous_preferredMagnitudeID:
+        if preferredMagnitudeID is not None and preferredMagnitudeID != previous_preferredMagnitudeID:
             st.magnitude = self._get_magnitude(preferredMagnitudeID)
             self.changed_magnitude(evid, previous_preferredMagnitudeID, preferredMagnitudeID)
             st.preferredMagnitudeID = preferredMagnitudeID
 
-        if preferredFocalMechanismID != previous_preferredFocalMechanismID:
+        if preferredFocalMechanismID is not None and preferredFocalMechanismID != previous_preferredFocalMechanismID:
             st.focalmechanism = self._get_focalmechanism(preferredFocalMechanismID)
             self.changed_focalmechanism(evid, previous_preferredFocalMechanismID, preferredFocalMechanismID)
             st.preferredFocalMechanismID = preferredFocalMechanismID
