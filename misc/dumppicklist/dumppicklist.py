@@ -11,7 +11,6 @@
 from __future__ import print_function
 import sys, traceback
 import seiscomp3.Client, seiscomp3.DataModel
-import sc3util
 
 line_template = "%(time)s %(net)-2s %(sta)5s %(cha)3s %(loc)2s %(residual)7.2f %(delta)7.3f %(azimuth)5.1f %(status)s %(phase)-5s %(weight)g\n"
 
@@ -34,17 +33,17 @@ yaml_template = """-
 
 def _todict(pick, arrival, pad_location_code=True):
     d = dict(pid=pick.publicID())
-    n,s,l,c = sc3util.nslc(pick.waveformID())
+    n,s,l,c = sc3stuff.util.nslc(pick.waveformID())
     if l=="" and pad_location_code is True:  l="--"
     d["net"], d["sta"], d["loc"], d["cha"] = n, s, l, c
-    d["time"]     = sc3util.format_time(pick.time().value())
+    d["time"]     = sc3stuff.util.format_time(pick.time().value())
     d["residual"] = arrival.timeResidual()
     d["delta"]    = arrival.distance()
     d["azimuth"]  = arrival.azimuth()
     d["weight"]   = arrival.weight()
     d["phase"]    = arrival.phase().code() 
     d["author"]   = pick.creationInfo().author() 
-    d["status"]   = "A" if sc3util.automatic(pick) else "M"
+    d["status"]   = "A" if sc3stuff.util.automatic(pick) else "M"
     return d
 
 
@@ -111,7 +110,7 @@ class EventLoaderApp(seiscomp3.Client.Application):
 
 
     def _readEventParametersFromXML(self):
-        ep = sc3util.readEventParametersFromXML(self._xmlFile)
+        ep = sc3stuff.util.readEventParametersFromXML(self._xmlFile)
         if ep is None:
             raise TypeError, self._xmlFile + ": no eventparameters found"
         return ep
@@ -166,7 +165,7 @@ class EventLoaderApp(seiscomp3.Client.Application):
         if not ep:
             return False
 
-        event, origin, pick, ampl, fm = sc3util.extractEventParameters(ep, self._eventID)
+        event, origin, pick, ampl, fm = sc3stuff.util.extractEventParameters(ep, self._eventID)
 
         printPickList(event, origin, pick, ampl, fm)
 
