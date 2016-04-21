@@ -1,8 +1,8 @@
 #!/usr/bin/env python
-
-# Dump Origin and moment tensor information to SC3 XML.
 #
-# Could be invoked like:
+# Dump origin and moment tensor information for an event to SC3 XML.
+#
+# Could be invoked in a pipeline like:
 #
 #  python scxmldump-public-with-mt.py --debug -d "$db" -E "$evid" |
 #  sccnv -f -i trunk:- -o qml1.2:"$evid-mt.QuakeML"
@@ -28,6 +28,12 @@ class MomentTensorDumper(Client.Application):
         self.commandline().addOption("Dump", "include-full-creation-info,I", "include full creation info")
         self.commandline().addOption("Dump", "include-comments,C", "include all comments")
 
+
+    def _removeComments(self, obj):
+        if obj is not None and not self.commandline().hasOption("include-comments"):
+            while obj.commentCount() > 0:
+                obj.removeComment(0)
+
     def _stripOrigin(self, org):
         # remove arrivals and magnitudes
         while org.arrivalCount() > 0:
@@ -43,89 +49,112 @@ class MomentTensorDumper(Client.Application):
         #obj.setCreationInfo(empty)
         obj.creationInfo().setAuthor("")
 
+    def _stripMomentTensor(self, mt):
+        mt.setGreensFunctionID("")
+        while mt.momentTensorStationContributionCount() > 0:
+            mt.removeMomentTensorStationContribution(0)
+        while mt.momentTensorPhaseSettingCount() > 0:
+            mt.removeMomentTensorPhaseSetting(0)
+
+    def _loadEvent(self, evid):
+        # Retrieve event from DB
+        # May return None
+        event = self.query().loadObject(DataModel.Event.TypeInfo(), evid)
+        event = DataModel.Event.Cast(event)
+        if event:
+            self._removeComments(event)
+        return event
+
+    def _loadOrigin(self, orid):
+        # Retrieve origin from DB
+        # May return None
+        obj = self.query().loadObject(DataModel.Origin.TypeInfo(), orid)
+        origin = DataModel.Origin.Cast(obj)
+        if origin:
+            self._stripOrigin(origin)
+            self._removeComments(origin)
+        return origin
+
+    def _loadFocalMechanism(self, fmid):
+        # Retrieve FocalMechanism from DB
+        # May return None
+        obj = self.query().loadObject(DataModel.FocalMechanism.TypeInfo(), fmid)
+        fm = DataModel.FocalMechanism.Cast(obj)
+        if fm:
+            self.query().loadMomentTensors(fm)
+            for i in xrange(fm.momentTensorCount()):
+                mt = fm.momentTensor(i)
+                self._stripMomentTensor(mt)
+        return fm
+
     def run(self):
         evid = self.commandline().optionString("event")
 
         ep = DataModel.EventParameters()
 
-        # If we got an event ID as command-line argument...
-        # Retrieve event from DB
-        event = self.query().loadObject(DataModel.Event.TypeInfo(), evid)
-        event = DataModel.Event.Cast(event)
+        event = self._loadEvent(evid)
         if event is None:
-            raise TypeError, "unknown event '" + evid + "'"
+            raise ValueError, "unknown event '" + evid + "'"
 
-        i = event.preferredOriginID()
-        obj = self.query().loadObject(DataModel.Origin.TypeInfo(), i)
-        preferredOrigin = DataModel.Origin.Cast(obj)
-        self._stripOrigin(preferredOrigin)
+        preferredOrigin = self._loadOrigin(event.preferredOriginID())
+        if preferredOrigin is None:
+            raise ValueError, "unknown origin '" + event.preferredOriginID() + "'"
 
-        i = event.preferredFocalMechanismID()
-        obj = self.query().loadObject(DataModel.FocalMechanism.TypeInfo(), i)
-        focalMechanism = DataModel.FocalMechanism.Cast(obj)
-        self.query().loadMomentTensors(focalMechanism)
-        for i in xrange(focalMechanism.momentTensorCount()):
-            momentTensor = focalMechanism.momentTensor(i)
-            momentTensor.setGreensFunctionID("")
-            while momentTensor.momentTensorStationContributionCount() > 0:
-                momentTensor.removeMomentTensorStationContribution(0)
-            while momentTensor.momentTensorPhaseSettingCount() > 0:
-                momentTensor.removeMomentTensorPhaseSetting(0)
+        focalMechanism = self._loadFocalMechanism(event.preferredFocalMechanismID())
 
-        if self.commandline().hasOption("include-triggering-origin"):
-            if event.preferredOriginID() != focalMechanism.triggeringOriginID():
-                i = focalMechanism.triggeringOriginID()
-                obj = self.query().loadObject(DataModel.Origin.TypeInfo(), i)
-                triggeringOrigin = DataModel.Origin.Cast(obj)
-                self._stripOrigin(preferredOrigin)
-            else:
-                triggeringOrigin = preferredOrigin
+        if focalMechanism is None:
+            momentTensor = derivedOrigin = triggeringOrigin = None
         else:
-            triggeringOrigin = None
-            focalMechanism.setTriggeringOriginID("")
+            if self.commandline().hasOption("include-triggering-origin"):
+                if event.preferredOriginID() != focalMechanism.triggeringOriginID():
+                    triggeringOrigin = self._loadOrigin(focalMechanism.triggeringOriginID())
+                else:
+                    triggeringOrigin = preferredOrigin
+            else:
+                triggeringOrigin = None
+                focalMechanism.setTriggeringOriginID("")
 
-        momentTensor = focalMechanism.momentTensor(0)
-        i = momentTensor.derivedOriginID()
-        obj = self.query().loadObject(DataModel.Origin.TypeInfo(), i)
-        derivedOrigin = DataModel.Origin.Cast(obj)
+            momentTensor = focalMechanism.momentTensor(0)
+            derivedOrigin = self._loadOrigin(momentTensor.derivedOriginID())
 
+        # take care if Origin/FocalMechanism references
         while (event.originReferenceCount() > 0):
             event.removeOriginReference(0)
-        event.add(DataModel.OriginReference(preferredOrigin.publicID()))
-        event.add(DataModel.OriginReference(derivedOrigin.publicID()))
+        if preferredOrigin:
+            event.add(DataModel.OriginReference(preferredOrigin.publicID()))
+        if derivedOrigin:
+            event.add(DataModel.OriginReference(derivedOrigin.publicID()))
         if triggeringOrigin is not None:
             if event.preferredOriginID() != triggeringOrigin.publicID():
                 event.add(DataModel.OriginReference(triggeringOrigin.publicID()))
         while (event.focalMechanismReferenceCount() > 0):
             event.removeFocalMechanismReference(0)
-        event.add(DataModel.FocalMechanismReference(focalMechanism.publicID()))
-
-        # strip comments
-        if not self.commandline().hasOption("include-comments"):
-            for obj in [ event, preferredOrigin, triggeringOrigin, derivedOrigin, focalMechanism ]:
-                if obj is not None:
-                    while obj.commentCount() > 0:
-                        obj.removeComment(0)
+        if focalMechanism:
+            event.add(DataModel.FocalMechanismReference(focalMechanism.publicID()))
+            self._removeComments(focalMechanism)
 
         # strip creation info
         if not self.commandline().hasOption("include-full-creation-info"):
             self._stripCreationInfo(event)
-            self._stripCreationInfo(focalMechanism)
-            for i in xrange(focalMechanism.momentTensorCount()):
-                self._stripCreationInfo(focalMechanism.momentTensor(i))
+            if focalMechanism:
+                self._stripCreationInfo(focalMechanism)
+                for i in xrange(focalMechanism.momentTensorCount()):
+                    self._stripCreationInfo(focalMechanism.momentTensor(i))
             for org in [ preferredOrigin, triggeringOrigin, derivedOrigin ]:
-                if org is None:
-                    continue
-                self._stripCreationInfo(org)
-                for i in xrange(org.magnitudeCount()):
-                    self._stripCreationInfo(org.magnitude(i))
+                if org is not None:
+                    self._stripCreationInfo(org)
+                    for i in xrange(org.magnitudeCount()):
+                        self._stripCreationInfo(org.magnitude(i))
 
         ep.add(event)
         ep.add(preferredOrigin)
-        if triggeringOrigin is not preferredOrigin:
-            ep.add(triggeringOrigin)
-        ep.add(focalMechanism)
-        ep.add(derivedOrigin)
+        if focalMechanism:
+            if triggeringOrigin:
+                if triggeringOrigin is not preferredOrigin:
+                    ep.add(triggeringOrigin)
+            if derivedOrigin:
+                ep.add(derivedOrigin)
+            ep.add(focalMechanism)
 
         # finally dump event parameters as formatted XML archive to stdout
         ar = IO.XMLArchive()
