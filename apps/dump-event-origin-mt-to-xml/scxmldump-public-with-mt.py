@@ -25,7 +25,8 @@ class MomentTensorDumper(Client.Application):
         self.commandline().addGroup("Dump")
         self.commandline().addStringOption("Dump", "event,E", "compute a time window from the event")
         self.commandline().addOption("Dump", "include-triggering-origin,T", "include triggering origin")
-        self.commandline().addOption("Dump", "include-full-creation-info,C", "include full creation info")
+        self.commandline().addOption("Dump", "include-full-creation-info,I", "include full creation info")
+        self.commandline().addOption("Dump", "include-comments,C", "include all comments")
 
     def _stripOrigin(self, org):
         # remove arrivals and magnitudes
@@ -64,12 +65,12 @@ class MomentTensorDumper(Client.Application):
         focalMechanism = DataModel.FocalMechanism.Cast(obj)
         self.query().loadMomentTensors(focalMechanism)
         for i in xrange(focalMechanism.momentTensorCount()):
-            mt = focalMechanism.momentTensor(i)
-            mt.setGreensFunctionID("")
-            while mt.momentTensorStationContributionCount() > 0:
-                mt.removeMomentTensorStationContribution(i)
-            while mt.momentTensorPhaseSettingCount() > 0:
-                mt.removeMomentTensorPhaseSetting(i)
+            momentTensor = focalMechanism.momentTensor(i)
+            momentTensor.setGreensFunctionID("")
+            while momentTensor.momentTensorStationContributionCount() > 0:
+                momentTensor.removeMomentTensorStationContribution(0)
+            while momentTensor.momentTensorPhaseSettingCount() > 0:
+                momentTensor.removeMomentTensorPhaseSetting(0)
 
         if self.commandline().hasOption("include-triggering-origin"):
             if event.preferredOriginID() != focalMechanism.triggeringOriginID():
@@ -83,8 +84,8 @@ class MomentTensorDumper(Client.Application):
             triggeringOrigin = None
             focalMechanism.setTriggeringOriginID("")
 
-        mt = focalMechanism.momentTensor(0)
-        i = mt.derivedOriginID()
+        momentTensor = focalMechanism.momentTensor(0)
+        i = momentTensor.derivedOriginID()
         obj = self.query().loadObject(DataModel.Origin.TypeInfo(), i)
         derivedOrigin = DataModel.Origin.Cast(obj)
 
@@ -99,10 +100,12 @@ class MomentTensorDumper(Client.Application):
             event.removeFocalMechanismReference(0)
         event.add(DataModel.FocalMechanismReference(focalMechanism.publicID()))
 
-        for obj in [ event, preferredOrigin, triggeringOrigin, derivedOrigin ]:
-            if obj is not None:
-                while obj.commentCount() > 0:
-                    obj.removeComment(0)
+        # strip comments
+        if not self.commandline().hasOption("include-comments"):
+            for obj in [ event, preferredOrigin, triggeringOrigin, derivedOrigin, focalMechanism ]:
+                if obj is not None:
+                    while obj.commentCount() > 0:
+                        obj.removeComment(0)
 
         # strip creation info
         if not self.commandline().hasOption("include-full-creation-info"):
