@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 #
-# Dump origin and moment tensor information for an event to SC3 XML.
+# Dump origin, magnitude and moment tensor information for an event to SC3 XML.
 #
 # Could be invoked in a pipeline like:
 #
@@ -25,19 +25,20 @@ class MomentTensorDumper(Client.Application):
         self.commandline().addGroup("Dump")
         self.commandline().addStringOption("Dump", "event,E", "compute a time window from the event")
         self.commandline().addOption("Dump", "include-full-creation-info,I", "include full creation info")
-        self.commandline().addOption("Dump", "include-comments,C", "include all comments")
-
+        self.commandline().addOption("Dump", "all-magnitudes,m", "include network magnitudes of all available types, not only the preferred magnitude")
+        self.commandline().addOption("Dump", "comments,c", "include comments")
 
     def _removeCommentsIfRequested(self, obj):
-        if obj is not None and not self.commandline().hasOption("include-comments"):
+        if obj is not None and not self.commandline().hasOption("comments"):
             while obj.commentCount() > 0:
                 obj.removeComment(0)
 
     def _stripOrigin(self, org):
-        # remove arrivals and magnitudes
+        # Remove all arrivals and magnitudes from the origin.
+        #
+        # If the origin was loaded using query().getObject()
+        # this is actually not needed.
         while org.arrivalCount() > 0:
-            # If the origin was loaded using query().getObject()
-            # this is actually not needed.
             org.removeArrival(0)
         while org.magnitudeCount() > 0:
             org.removeMagnitude(0)
@@ -104,6 +105,13 @@ class MomentTensorDumper(Client.Application):
         return fm
 
     def run(self):
+        """ Things to do:
+        
+        * load event
+        * load preferred origin without arrivals
+        * load at least the preferred magnitude if available, all magnitudes if requested
+        * load focal mechanism incl. moment tensor depending on availability, incl. Mw from derived origin
+        """
         evid = self.commandline().optionString("event")
 
         # Load event and preferred origin. This is the minimum
@@ -111,31 +119,59 @@ class MomentTensorDumper(Client.Application):
         event = self._loadEvent(evid)
         if event is None:
             raise ValueError, "unknown event '" + evid + "'"
-        preferredOrigin = self._loadOrigin(event.preferredOriginID())
+#       preferredOrigin = self._loadOrigin(event.preferredOriginID())
+        preferredOrigin = self.query().getObject(DataModel.Origin.TypeInfo(), event.preferredOriginID())
+        preferredOrigin = DataModel.Origin.Cast(preferredOrigin)
         if preferredOrigin is None:
             raise ValueError, "unknown origin '" + event.preferredOriginID() + "'"
-        # take care of origin references
+        # take care of origin references and leave just one for the preferred origin
         while (event.originReferenceCount() > 0):
             event.removeOriginReference(0)
         if preferredOrigin:
             event.add(DataModel.OriginReference(preferredOrigin.publicID()))
+        if self.commandline().hasOption("comments"):
+            self.query().loadComments(preferredOrigin)
 
-        # try to read focal mechanism, moment tensor, moment magnitude and related origins
+        # load all magnitudes for preferredOrigin
+        if self.commandline().hasOption("all-magnitudes"):
+            self.query().loadMagnitudes(preferredOrigin)
+            magnitudes = [ preferredOrigin.magnitude(i) for i in range(preferredOrigin.magnitudeCount()) ]
+        else:
+            magnitudes = []
+        if event.preferredMagnitudeID():
+            # try to load from memory
+            for mag in magnitudes:
+                if mag.publicID() == event.preferredMagnitudeID():
+                    preferredMagnitude = mag
+                    break
+#           preferredMagnitude = DataModel.Magnitude.Find(event.preferredMagnitudeID())
+            else:
+                # try to load it from database
+                preferredMagnitude = self._loadMagnitude(event.preferredMagnitudeID())
+        else:
+            preferredMagnitude = None
+
+        # try to load focal mechanism, moment tensor, moment magnitude and related origins
         momentTensor = momentMagnitude = derivedOrigin = triggeringOrigin = None   # default
         focalMechanism = self._loadFocalMechanism(event.preferredFocalMechanismID())
         if focalMechanism:
             if focalMechanism.triggeringOriginID():
-                if event.preferredOriginID() != focalMechanism.triggeringOriginID():
-                    triggeringOrigin = self._loadOrigin(focalMechanism.triggeringOriginID())
-                else:
+                if event.preferredOriginID() == focalMechanism.triggeringOriginID():
                     triggeringOrigin = preferredOrigin
+                else:
+                    triggeringOrigin = self.query().getObject(DataModel.Origin.TypeInfo(), focalMechanism.triggeringOriginID())
+                    triggeringOrigin = DataModel.Origin.Cast(triggeringOrigin)
 
             if focalMechanism.momentTensorCount() > 0:
                 momentTensor = focalMechanism.momentTensor(0) # FIXME What if there is more than one MT?
                 if momentTensor.derivedOriginID():
-                    derivedOrigin = self._loadOrigin(momentTensor.derivedOriginID())
+                    derivedOrigin = self.query().getObject(DataModel.Origin.TypeInfo(), focalMechanism.derivedOriginID())
+                    derivedOrigin = DataModel.Origin.Cast(derivedOrigin)
                 if momentTensor.momentMagnitudeID():
-                    momentMagnitude = self._loadMagnitude(momentTensor.momentMagnitudeID())
+                    if momentTensor.momentMagnitudeID() == event.preferredMagnitudeID():
+                        momentMagnitude = preferredMagnitude
+                    else:
+                        momentMagnitude = self._loadMagnitude(momentTensor.momentMagnitudeID())
 
             # take care of FocalMechanism and related references
             if derivedOrigin:
@@ -165,6 +201,8 @@ class MomentTensorDumper(Client.Application):
         # populate EventParameters instance
         ep = DataModel.EventParameters()
         ep.add(event)
+        if preferredMagnitude and preferredMagnitude is not momentMagnitude:
+            preferredOrigin.add(preferredMagnitude)
         ep.add(preferredOrigin)
         if focalMechanism:
             if triggeringOrigin:
