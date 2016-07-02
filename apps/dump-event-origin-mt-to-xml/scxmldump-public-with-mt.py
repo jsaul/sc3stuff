@@ -165,7 +165,7 @@ class MomentTensorDumper(Client.Application):
             if focalMechanism.momentTensorCount() > 0:
                 momentTensor = focalMechanism.momentTensor(0) # FIXME What if there is more than one MT?
                 if momentTensor.derivedOriginID():
-                    derivedOrigin = self.query().getObject(DataModel.Origin.TypeInfo(), focalMechanism.derivedOriginID())
+                    derivedOrigin = self.query().getObject(DataModel.Origin.TypeInfo(), momentTensor.derivedOriginID())
                     derivedOrigin = DataModel.Origin.Cast(derivedOrigin)
                 if momentTensor.momentMagnitudeID():
                     if momentTensor.momentMagnitudeID() == event.preferredMagnitudeID():
