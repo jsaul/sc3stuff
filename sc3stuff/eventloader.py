@@ -118,16 +118,20 @@ class EventLoaderApp(seiscomp3.Client.Application):
         return ep
         # TODO: focal mechanisms for completeness
 
-
-    def run(self):
+    def readEventParameters(self):
         if self._xmlFile:
-            self._ep = self._readEventParametersFromXML()
+            ep = self._readEventParametersFromXML()
         else:
             if not self._eventID:
                 seiscomp3.Logging.error("need to specify at an event id to read from database")
                 return False
-            self._ep = self._readEventParametersFromDB()
+            ep = self._readEventParametersFromDB()
+        if ep:
+            return ep
+        return None
+
+    def run(self):
+        self._ep = self.readEventParameters()
         if not self._ep:
             return False
-
         return True
