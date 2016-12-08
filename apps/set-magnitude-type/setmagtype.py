@@ -84,10 +84,12 @@ class PreferredMagnitudeTypeSetterApp(EventLoaderApp):
 
 
     def run(self):
-        if not EventLoaderApp.run(self):
-            return False
+#       if not EventLoaderApp.run(self):
+#           return False
 
-        event, origin, pick, ampl, fm = sc3stuff.util.extractEventParameters(self._ep, self._eventID)
+        ep = self.readEventParameters()
+
+        event, origin, pick, ampl, fm = sc3stuff.util.extractEventParameters(ep, self._eventID)
 #       print(event, origin)
 
         if self._magType is not None:
