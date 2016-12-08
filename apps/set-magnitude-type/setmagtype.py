@@ -77,7 +77,7 @@ class PreferredMagnitudeTypeSetterApp(EventLoaderApp):
         return sendJournal("EvPrefMw", "false")
 
     def fixMagnitudeType(self, magtype):
-        return self.sendJournal("EvPrefMagType", "true")
+        return self.sendJournal("EvPrefMagType", magtype)
 
     def releaseMagnitudeType(self):
         return sendJournal("EvPrefMagType", "")
