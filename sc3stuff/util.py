@@ -21,6 +21,37 @@ def readEventParametersFromXML(xmlFile):
     return ep
 
 
+def EventParametersEvents(ep):
+    for i in xrange(ep.eventCount()):
+        obj = seiscomp3.DataModel.Event.Cast(ep.event(i))
+        if obj:
+            yield obj
+
+def EventParametersOrigins(ep):
+    for i in xrange(ep.originCount()):
+        obj = seiscomp3.DataModel.Origin.Cast(ep.origin(i))
+        if obj:
+            yield obj
+
+def EventParametersPicks(ep):
+    for i in xrange(ep.pickCount()):
+        obj = seiscomp3.DataModel.Pick.Cast(ep.pick(i))
+        if obj:
+            yield obj
+
+def EventParametersAmplitudes(ep):
+    for i in xrange(ep.amplitudeCount()):
+        obj = seiscomp3.DataModel.Amplitude.Cast(ep.amplitude(i))
+        if obj:
+            yield obj
+
+def EventParametersFocalMechanisms(ep):
+    for i in xrange(ep.focalMechanismCount()):
+        obj = seiscomp3.DataModel.FocalMechanism.Cast(ep.focalMechanism(i))
+        if obj:
+            yield obj
+
+
 def extractEventParameters(ep, eventID=None, filterOrigins=True, filterPicks=True):
     """
     Extract picks, amplitudes, origins, events and focal mechanisms
@@ -34,20 +65,22 @@ def extractEventParameters(ep, eventID=None, filterOrigins=True, filterPicks=Tru
     origin = {}
     fm = {}
 
-    while ep.eventCount() > 0:
-        # FIXME: The cast hack forces the SC3 refcounter to be increased.
-        obj = seiscomp3.DataModel.Event.Cast(ep.event(0))
-        ep.removeEvent(0)
+#   while ep.eventCount() > 0:
+#       # FIXME: The cast hack forces the SC3 refcounter to be increased.
+#       obj = seiscomp3.DataModel.Event.Cast(ep.event(0))
+#       ep.removeEvent(0)
+    for obj in EventParametersEvents(ep):
         publicID = obj.publicID()
         if eventID is not None and publicID != eventID:
             continue
         event[publicID] = obj
 
     pickIDs = []
-    while ep.originCount() > 0:
-        # FIXME: The cast hack forces the SC3 refcounter to be increased.
-        obj = seiscomp3.DataModel.Origin.Cast(ep.origin(0))
-        ep.removeOrigin(0)
+#   while ep.originCount() > 0:
+#       # FIXME: The cast hack forces the SC3 refcounter to be increased.
+#       obj = seiscomp3.DataModel.Origin.Cast(ep.origin(0))
+#       ep.removeOrigin(0)
+    for obj in EventParametersOrigins(ep):
         publicID = obj.publicID()
         if filterOrigins:
             # only keep origins that are preferredOrigin's of an event
@@ -63,30 +96,93 @@ def extractEventParameters(ep, eventID=None, filterOrigins=True, filterPicks=Tru
         else:
             origin[publicID] = obj
 
-    while ep.pickCount() > 0:
-        # FIXME: The cast hack forces the SC3 refcounter to be increased.
-        obj = seiscomp3.DataModel.Pick.Cast(ep.pick(0))
-        ep.removePick(0)
+#   while ep.pickCount() > 0:
+#       # FIXME: The cast hack forces the SC3 refcounter to be increased.
+#       obj = seiscomp3.DataModel.Pick.Cast(ep.pick(0))
+#       ep.removePick(0)
+    for obj in EventParametersPicks(ep):
         publicID = obj.publicID()
         if filterPicks and publicID not in pickIDs:
             continue
         pick[publicID] = obj
 
-    while ep.amplitudeCount() > 0:
-        # FIXME: The cast hack forces the SC3 refcounter to be increased.
-        obj = seiscomp3.DataModel.Amplitude.Cast(ep.amplitude(0))
-        ep.removeAmplitude(0)
+#   while ep.amplitudeCount() > 0:
+#       # FIXME: The cast hack forces the SC3 refcounter to be increased.
+#       obj = seiscomp3.DataModel.Amplitude.Cast(ep.amplitude(0))
+#       ep.removeAmplitude(0)
+    for obj in EventParametersAmplitudes(ep):
         if obj.pickID() not in pick:
             continue
         ampl[obj.publicID()] = obj
 
-    while ep.focalMechanismCount() > 0:
-        # FIXME: The cast hack forces the SC3 refcounter to be increased.
-        obj = seiscomp3.DataModel.FocalMechanism.Cast(ep.focalMechanism(0))
-        ep.removeFocalMechanism(0)
+#   while ep.focalMechanismCount() > 0:
+#       # FIXME: The cast hack forces the SC3 refcounter to be increased.
+#       obj = seiscomp3.DataModel.FocalMechanism.Cast(ep.focalMechanism(0))
+#       ep.removeFocalMechanism(0)
+    for obj in EventParametersFocalMechanisms(ep):
         fm[obj.publicID()] = obj
 
     return event, origin, pick, ampl, fm
+
+
+def ep_get_event(ep, eventID):
+
+    for evt in EventParametersEvents(ep):
+        publicID = evt.publicID()
+        if publicID == eventID:
+            return evt
+
+def ep_get_origin(ep, eventID=None, originID=None):
+
+    if eventID:
+        evt = ep_get_event(ep, eventID)
+        if not evt:
+            return
+
+    for i in xrange(ep.originCount()):
+        # FIXME: The cast hack forces the SC3 refcounter to be increased.
+        org = seiscomp3.DataModel.Origin.Cast(ep.origin(i))
+        if originID is None:
+            if event is not None:
+                if org.publicID() == evt.preferredOriginID():
+                    return org
+        else:
+            if originID == org.publicID():
+                return org
+
+
+def ep_get_magnitude(ep, eventID):
+
+    evt = ep_get_event(ep, eventID)
+    if not evt:
+        return
+    mag = seiscomp3.DataModel.Magnitude.Find(evt.preferredMagnitudeID())
+    return mag
+
+
+def ep_get_fm(ep, eventID):
+    """
+    retrieve the "preferred" moment tensor from EventParameters
+    object ep for event with the specified public ID
+    """
+    evt = ep_get_event(ep, eventID)
+    if not evt:
+        return
+    fm = seiscomp3.DataModel.FocalMechanism.Find(evt.preferredFocalMechanismID())
+    return fm
+
+
+def ep_get_region(ep, eventID):
+
+    evt = ep_get_event(ep, eventID)
+    if not evt:
+        return
+    for i in xrange(evt.eventDescriptionCount()):
+        evtd = evt.eventDescription(i)
+        evtdtype = seiscomp3.DataModel.EEventDescriptionTypeNames.name(evtd.type())
+        evtdtext = evtd.text()
+        if evtdtype.startswith("region"):
+            return evtdtext
 
 
 def nslc(wfid):

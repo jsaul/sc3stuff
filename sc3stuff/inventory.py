@@ -14,20 +14,31 @@ def InventoryIterator(inventory, time=None):
             station = network.station(ista)
 
             if time is not None:
+                # If a time is specified, only yield inventory
+                # items matching this time.
+
+                # If the start time of an inventory item is not
+                # known, this item is ignored.
                 try:
                     start = station.start()
                 except:
                     continue
 
+                if time < start:
+                    continue
+
+                # If the end time of an inventory item is not
+                # known it is considered "open end"
                 try:
                     end = station.end()
-                    if not start <= now <= end:
+                    if time > end:
                         continue
                 except:
                     pass
 
-            # now we know that this is an operational station at the
-            # specified time
+                # At this point we know that this is an operational
+                # station at the specified time
+
             for iloc in xrange(station.sensorLocationCount()):
                 location = station.sensorLocation(iloc)
 

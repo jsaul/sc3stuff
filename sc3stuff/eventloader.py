@@ -131,7 +131,8 @@ class EventLoaderApp(seiscomp3.Client.Application):
         return None
 
     def run(self):
-        self._ep = self.readEventParameters()
+        if not self._ep:
+            self._ep = self.readEventParameters()
         if not self._ep:
             return False
         return True
