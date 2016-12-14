@@ -16,6 +16,13 @@ import sc3stuff.util
 
 
 class EventLoaderApp(seiscomp3.Client.Application):
+    """
+    Reads event parameters either
+      * from a SeisComP3 database (for a specific event) or
+      * from a SeisComP3 XML file (for potentially more than one event)
+      
+    An EventParameters instance is created to be used by derived classes.
+    """
 
     def __init__(self, argc, argv):
         self.setXmlEnabled(True)
@@ -29,6 +36,7 @@ class EventLoaderApp(seiscomp3.Client.Application):
     def setXmlEnabled(self, enable=True):
         """ To be called from __init__() """
         self._xmlEnabled = enable
+
 
     def xmlEnabled(self):
         return self._xmlEnabled
@@ -75,14 +83,16 @@ class EventLoaderApp(seiscomp3.Client.Application):
 
 
     def _readEventParametersFromXML(self):
+        # TODO: filter only items related to self._eventID if set
         ep = sc3stuff.util.readEventParametersFromXML(self._xmlFile)
         if ep is None:
-            raise TypeError, self._xmlFile + ": no eventparameters found"
+            raise TypeError, self._xmlFile + ": no EventParameters found"
         return ep
 
 
-    def _readEventParametersFromDB(self):
+    def _readEventParametersFromDatabase(self):
         # load event and preferred origin
+        # self._eventID is required to be set
         evt = self.query().loadObject(seiscomp3.DataModel.Event.TypeInfo(), self._eventID)
         evt = seiscomp3.DataModel.Event.Cast(evt)
         if evt is None:
@@ -118,21 +128,23 @@ class EventLoaderApp(seiscomp3.Client.Application):
         return ep
         # TODO: focal mechanisms for completeness
 
+
     def readEventParameters(self):
         if self._xmlFile:
             ep = self._readEventParametersFromXML()
         else:
             if not self._eventID:
-                seiscomp3.Logging.error("need to specify at an event id to read from database")
+                seiscomp3.Logging.error("need to specify an event id to read from database")
                 return False
-            ep = self._readEventParametersFromDB()
+            ep = self._readEventParametersFromDatabase()
         if ep:
             return ep
         return None
 
-    def run(self):
-        if not self._ep:
-            self._ep = self.readEventParameters()
-        if not self._ep:
-            return False
-        return True
+
+#    def run(self):
+#        if not self._ep:
+#            self._ep = self.readEventParameters()
+#        if not self._ep:
+#            return False
+#        return True
