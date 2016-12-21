@@ -52,7 +52,7 @@ def EventParametersFocalMechanisms(ep):
             yield obj
 
 
-def extractEventParameters(ep, eventID=None, filterOrigins=True, filterPicks=True):
+def extractEventParameters(ep, eventID=None, filterOrigins=False, filterPicks=False):
     """
     Extract picks, amplitudes, origins, events and focal mechanisms
     from an EventParameters instance. 
