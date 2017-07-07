@@ -3,8 +3,8 @@
 ###### configuration #######
 # time window relative to
 # origin time:
-before = 24*3600.   # 20 min.
-after  = 12*3600.   # 30 min.
+before = 4*3600.   # 4 hours
+after  = 1*3600.   # 1 hour
 ############################
 
 import sys, traceback
@@ -25,6 +25,7 @@ class PickLoader(Client.Application):
         self.commandline().addStringOption("Dump", "end", "specify end of time window")
         self.commandline().addStringOption("Dump", "event", "compute a time window from the event")
         self.commandline().addStringOption("Dump", "origins", "specify space separated list of origin ids to be also loaded")
+        self.commandline().addOption("Dump", "no-origins", "don't include any origins")
 
     def _processCommandLineOptions(self):
         try:    start = self.commandline().optionString("begin")
@@ -81,13 +82,14 @@ class PickLoader(Client.Application):
                 self._endTime   = t0 + Core.TimeSpan(after)
                 print>>sys.stderr, "time window: %s ... %s" % (self._startTime, self._endTime)
 
-            # Loop over all origins of the event
-            for org in dbq.getOrigins(self._evid):
-                org = DataModel.Origin.Cast(org)
-                # We only look for manual events.
-                if org.evaluationMode() != DataModel.MANUAL:
-                    continue
-                self._orids.append(org.publicID())
+            if not self.commandline().hasOption("no-origins"):
+                # Loop over all origins of the event
+                for org in dbq.getOrigins(self._evid):
+                    org = DataModel.Origin.Cast(org)
+                    # We only look for manual events.
+                    if org.evaluationMode() != DataModel.MANUAL:
+                        continue
+                    self._orids.append(org.publicID())
 
         # FIRST the pick query loop, THEN the amplitude query loop!
         # NESTED QUERY LOOPS ARE NOT ALLOWED!!!
@@ -108,19 +110,20 @@ class PickLoader(Client.Application):
             sys.stderr.write("loaded amplitudes for %d of %d picks\r" % (i,len(picks)))
         print >> sys.stderr, "loaded %d amplitudes                    " % ep.amplitudeCount()
 
-        for i,orid in enumerate(self._orids):
-            # XXX There was occasionally a problem with:
-            #   org = dbq.loadObject(DataModel.Origin.TypeInfo(), orid)
-            #   org = DataModel.Origin.Cast(org)
-            # NOTE when org was directly overwritten.
-            # resulting in a segfault. The reason is not clear, but
-            # is most probably in the Python wrapper. The the segfault
-            # can be avoided by creating an intermediate object 'obj'.
-            obj = dbq.loadObject(DataModel.Origin.TypeInfo(), orid)
-            org = DataModel.Origin.Cast(obj)
-            ep.add(org)
-            sys.stderr.write("loaded %d of %d manual origins\r" % (i,len(self._orids)))
-        print >> sys.stderr, "loaded %d manual origins                " % ep.originCount()
+        if not self.commandline().hasOption("no-origins"):
+            for i,orid in enumerate(self._orids):
+                # XXX There was occasionally a problem with:
+                #   org = dbq.loadObject(DataModel.Origin.TypeInfo(), orid)
+                #   org = DataModel.Origin.Cast(org)
+                # NOTE when org was directly overwritten.
+                # resulting in a segfault. The reason is not clear, but
+                # is most probably in the Python wrapper. The the segfault
+                # can be avoided by creating an intermediate object 'obj'.
+                obj = dbq.loadObject(DataModel.Origin.TypeInfo(), orid)
+                org = DataModel.Origin.Cast(obj)
+                ep.add(org)
+                sys.stderr.write("loaded %d of %d manual origins\r" % (i,len(self._orids)))
+            print >> sys.stderr, "loaded %d manual origins                " % ep.originCount()
 
         # finally dump event parameters as formatted XML archive to stdout
         ar = IO.XMLArchive()
