@@ -25,7 +25,9 @@ class PickLoader(Client.Application):
         self.commandline().addStringOption("Dump", "end", "specify end of time window")
         self.commandline().addStringOption("Dump", "event", "compute a time window from the event")
         self.commandline().addStringOption("Dump", "origins", "specify space separated list of origin ids to be also loaded")
+        self.commandline().addStringOption("Dump", "network-blacklist", "specify space separated list of network codes to be excluded")
         self.commandline().addOption("Dump", "no-origins", "don't include any origins")
+        self.commandline().addOption("Dump", "no-manual-picks", "don't include any manual picks")
 
     def _processCommandLineOptions(self):
         try:    start = self.commandline().optionString("begin")
@@ -56,6 +58,12 @@ class PickLoader(Client.Application):
             if self._endTime.fromString(end, "%F %T") == False:
                 print >> sys.stderr, "Wrong 'end' format"
                 return False
+
+        try:
+            self._networkBlacklist = self.commandline().optionString("network-blacklist").split()
+        except:
+            self._networkBlacklist = []
+
         return True
 
     def run(self):
@@ -97,6 +105,10 @@ class PickLoader(Client.Application):
         for obj in dbq.getPicks(self._startTime, self._endTime):
             pick = DataModel.Pick.Cast(obj)
             if pick:
+                if pick.evaluationMode() == DataModel.MANUAL and self.commandline().hasOption("no-manual-picks"):
+                    continue
+                if pick.waveformID().networkCode() in self._networkBlacklist:
+                    continue
                 picks.append(pick)
                 ep.add(pick)
         print >> sys.stderr, "loaded %d picks                         " % ep.pickCount()
