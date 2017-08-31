@@ -65,6 +65,8 @@ class MomentTensorDumper(Client.Application):
         event = self.query().loadObject(DataModel.Event.TypeInfo(), evid)
         event = DataModel.Event.Cast(event)
         if event:
+            if event.eventDescriptionCount() == 0:
+                self.query().loadEventDescriptions(event)
             self._removeCommentsIfRequested(event)
         return event
 
@@ -222,7 +224,7 @@ class MomentTensorDumper(Client.Application):
         ar.close()
 
         del ep
-
+        return True
 
 def main():
     app = MomentTensorDumper()
