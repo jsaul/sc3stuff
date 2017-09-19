@@ -37,23 +37,25 @@ playing them back in that order.
 
   This kind of parametric playback is very easy to generate from the
 database. In fact it could even be generated from the database on
-the fly. But it will only work to play back static objects like
-amplitudes, picks and even origins, and only as long as they can be
-assumed to be static. Other object types like events and network
-magnitudes get updated during the processing and therefore cannot be
-played back. This is because the final state of these objects in the
-database does not usually reflect their evolution. Overwriting them
-in the database means information loss. A much more complete history
-of an event can be captured by logging notifier messages. There will
-likely be support for this in SC3 and some Python scripts to
-demonstrate the power of this mechanism are included here already.
-The idea is to subscribe to all relevant messaging groups and grab
-all notifier messages that come around. Each received notifier
-message is saved as XML document to a notifier log. Each log entry
-is preceded by a header line containing a time stamp for
-synchonization and the length of the following XML document in
-bytes. This log will have to be run continuously and stored e.g. in
-day files.
+the fly. It will work to play back amplitudes, picks and even
+origins, but only as long as they can be assumed to be static.
+Other object types like events and network magnitudes get updated
+during the processing and therefore cannot be played back properly.
+This is because the final state of these objects in the database can
+of course not reflect their evolution. Overwriting them in the
+database means loss of information about their previous state!
+
+  A much more complete history of an event can be captured by
+logging also the transient state of objects in the form of notifier
+messages. There will likely be support for this in SC3 in future.
+Some proof-of-concept Python scripts to demonstrate the power of
+this playback mechanism are included here already.  The idea is to
+subscribe to all relevant messaging groups and grab all notifier
+messages that come around.  Each received notifier message is saved
+as XML document to a notifier log. Each log entry is preceded by a
+header line containing a time stamp for synchonization and the
+length of the following XML document in bytes. This log will have to
+be run continuously and stored e.g. in day files.
 
 
 
