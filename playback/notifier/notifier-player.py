@@ -85,7 +85,14 @@ class NotifierPlayer(seiscomp3.Client.Application):
                 if line[0] == "#":
                     break
 
-            sharp, timestamp, nbytes = line.split()
+            if len(line.split()) == 3:
+                sharp, timestamp, nbytes = line.split()
+            elif len(line.split()) == 4:
+                sharp, timestamp, sbytes = line.split()
+                assert sbytes == "bytes"
+            else:
+                return False
+            assert sharp[0] == "#"
             time = seiscomp3.Core.Time.GMT()
             time.fromString(timestamp, "%FT%T.%fZ")
 

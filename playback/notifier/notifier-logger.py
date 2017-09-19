@@ -1,4 +1,3 @@
-from __future__ import print_function
 import sys, os, logging, logging.handlers, StringIO
 import seiscomp3.Client, seiscomp3.DataModel, seiscomp3.IO, seiscomp3.Logging
 
@@ -73,7 +72,7 @@ class NotifierLogger(seiscomp3.Client.Application):
     def _writeNotifier(self, xml):
         now = seiscomp3.Core.Time.GMT().toString("%Y-%m-%dT%H:%M:%S.%f000000")[:26]+"Z"
         xml = xml+"\n"
-        self._logger.info("#### %s %d\n" % (now, len(xml)))
+        self._logger.info("####  %s  %d bytes\n" % (now, len(xml)))
         self._logger.info(xml)
 
     def handleMessage(self, msg):
