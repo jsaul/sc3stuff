@@ -35,7 +35,7 @@ behaviour. This works by reading the picks and amplitudes from an
 XML file, sorting them according to their creation times and
 playing them back in that order.
 
-This kind of parametric playback is very easy to generate from the
+  This kind of parametric playback is very easy to generate from the
 database. In fact it could even be generated from the database on
 the fly. But it will only work to play back static objects like
 amplitudes, picks and even origins, and only as long as they can be
