@@ -1,4 +1,4 @@
-import sys, os, logging, logging.handlers, StringIO
+import sys, os, gc, logging, logging.handlers, StringIO
 import seiscomp3.Client, seiscomp3.DataModel, seiscomp3.IO, seiscomp3.Logging
 
 
@@ -74,6 +74,7 @@ class NotifierLogger(seiscomp3.Client.Application):
         xml = xml+"\n"
         self._logger.info("####  %s  %d bytes\n" % (now, len(xml)))
         self._logger.info(xml)
+#       gc.collect()
 
     def handleMessage(self, msg):
         nmsg = seiscomp3.DataModel.NotifierMessage.Cast(msg)
@@ -81,7 +82,7 @@ class NotifierLogger(seiscomp3.Client.Application):
             xml = objectToXML(nmsg)
             if xml:
                 self._writeNotifier(xml)
-        seiscomp3.Client.Application.handleMessage(self, msg)
+#       seiscomp3.Client.Application.handleMessage(self, msg)
 
 
 if __name__ == "__main__":
