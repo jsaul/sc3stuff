@@ -1,4 +1,4 @@
-import sys, os, gc, logging, logging.handlers, StringIO
+import sys, os, gc, md5, logging, logging.handlers, StringIO
 import seiscomp3.Client, seiscomp3.DataModel, seiscomp3.IO, seiscomp3.Logging
 
 
@@ -41,12 +41,12 @@ def objectToXML(obj, expName = "trunk"):
 class MyLogHandler(logging.handlers.TimedRotatingFileHandler):
 
     def __init__(self, filename, **kwargs):
-        super(MyLogHandler, self).__init__(filename, **kwargs)
+        logging.handlers.TimedRotatingFileHandler.__init__(self, filename, **kwargs)
         self.suffix = "%Y-%m-%dT%H:%M:%SZ"
         self.utc = True
 
     def doRollover(self):
-        super(MyLogHandler, self).doRollover()
+        logging.handlers.TimedRotatingFileHandler.doRollover(self)
         os.system("gzip '" + self.baseFilename + "'.*-*-*T*:*:*Z &")
 
 
@@ -64,6 +64,7 @@ class NotifierLogger(seiscomp3.Client.Application):
         # do nothing with the notifiers except logging
         self.setAutoApplyNotifierEnabled(False)
         self.setInterpretNotifierEnabled(False)
+        seiscomp3.DataModel.PublicObject.SetRegistrationEnabled(False) 
         self._logger = logging.getLogger("Rotating Log")
         self._logger.setLevel(logging.INFO)
         handler = MyLogHandler("notifier-log", when="h", interval=1, backupCount=48)
@@ -71,10 +72,9 @@ class NotifierLogger(seiscomp3.Client.Application):
 
     def _writeNotifier(self, xml):
         now = seiscomp3.Core.Time.GMT().toString("%Y-%m-%dT%H:%M:%S.%f000000")[:26]+"Z"
-        xml = xml+"\n"
-        self._logger.info("####  %s  %d bytes\n" % (now, len(xml)))
+        self._logger.info("####  %s  %s  %d bytes" % (now, md5.new(xml).hexdigest(), len(xml)))
         self._logger.info(xml)
-#       gc.collect()
+        gc.collect()
 
     def handleMessage(self, msg):
         nmsg = seiscomp3.DataModel.NotifierMessage.Cast(msg)
