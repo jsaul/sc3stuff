@@ -11,6 +11,7 @@
 from __future__ import print_function
 import sys, traceback
 import seiscomp3.Client, seiscomp3.DataModel
+import sc3stuff.util
 
 line_template = "%(time)s %(net)-2s %(sta)5s %(cha)3s %(loc)2s %(residual)7.2f %(delta)7.3f %(azimuth)5.1f %(status)s %(phase)-5s %(weight)g\n"
 
