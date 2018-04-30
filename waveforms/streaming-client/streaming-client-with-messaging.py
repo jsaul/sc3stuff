@@ -1,3 +1,4 @@
+from __future__ import print_function
 import sys, seiscomp3.Core, seiscomp3.Client, seiscomp3.DataModel
 
 class WaveformApp(seiscomp3.Client.StreamApplication):
@@ -20,18 +21,18 @@ class WaveformApp(seiscomp3.Client.StreamApplication):
         return True
 
     def handleRecord(self, rec):
-        print rec.stationCode(), rec.startTime()
+        print(rec.stationCode(), rec.startTime())
         return True
 
     def addObject(self, parentID, obj):
         pick = seiscomp3.DataModel.Pick.Cast(obj)
         if pick:
-            print "new pick", pick.publicID()
+            print("new pick", pick.publicID())
 
     def updateObject(self, parentID, obj):
         pick = seiscomp3.DataModel.Pick.Cast(obj)
         if pick:
-            print "updated pick", pick.publicID()
+            print("updated pick", pick.publicID())
 
 app = WaveformApp(len(sys.argv), sys.argv)
 app()

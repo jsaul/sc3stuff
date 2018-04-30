@@ -1,3 +1,4 @@
+from __future__ import print_function
 import sys, seiscomp3.Client, seiscomp3.DataModel
 
 class PickClient(seiscomp3.Client.Application):
@@ -10,7 +11,7 @@ class PickClient(seiscomp3.Client.Application):
     def addObject(self, parentID, obj):
         pick = seiscomp3.DataModel.Pick.Cast(obj)
         if pick:
-            print "new pick", pick.publicID()
+            print("new pick", pick.publicID())
 
 app = PickClient(len(sys.argv), sys.argv)
 app()

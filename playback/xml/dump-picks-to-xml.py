@@ -1,5 +1,7 @@
 #!/usr/bin/env python
 
+from __future__ import print_function
+
 ###### configuration #######
 # time window relative to
 # origin time:
@@ -51,12 +53,12 @@ class PickLoader(Client.Application):
         if start:
             self._startTime = Core.Time.GMT()
             if self._startTime.fromString(start, "%F %T") == False:
-                print >> sys.stderr, "Wrong 'begin' format"
+                print("Wrong 'begin' format", file=sys.stderr)
                 return False
         if end:
             self._endTime = Core.Time.GMT()
             if self._endTime.fromString(end, "%F %T") == False:
-                print >> sys.stderr, "Wrong 'end' format"
+                print("Wrong 'end' format", file=sys.stderr)
                 return False
 
         try:
@@ -88,7 +90,7 @@ class PickLoader(Client.Application):
                 t0 = org.time().value()
                 self._startTime = t0 + Core.TimeSpan(-before)
                 self._endTime   = t0 + Core.TimeSpan(after)
-                print>>sys.stderr, "time window: %s ... %s" % (self._startTime, self._endTime)
+                print("time window: %s ... %s" % (self._startTime, self._endTime), file=sys.stderr)
 
             if not self.commandline().hasOption("no-origins"):
                 # Loop over all origins of the event
@@ -111,7 +113,7 @@ class PickLoader(Client.Application):
                     continue
                 picks.append(pick)
                 ep.add(pick)
-        print >> sys.stderr, "loaded %d picks                         " % ep.pickCount()
+        print("loaded %d picks                         " % ep.pickCount(), file=sys.stderr)
 
         for i,pick in enumerate(picks):
             # amplitude query loop for each pick, see above comments.
@@ -120,7 +122,7 @@ class PickLoader(Client.Application):
                 if ampl:
                     ep.add(ampl)
             sys.stderr.write("loaded amplitudes for %d of %d picks\r" % (i,len(picks)))
-        print >> sys.stderr, "loaded %d amplitudes                    " % ep.amplitudeCount()
+        print("loaded %d amplitudes                    " % ep.amplitudeCount(), file=sys.stderr)
 
         if not self.commandline().hasOption("no-origins"):
             for i,orid in enumerate(self._orids):
@@ -135,7 +137,7 @@ class PickLoader(Client.Application):
                 org = DataModel.Origin.Cast(obj)
                 ep.add(org)
                 sys.stderr.write("loaded %d of %d manual origins\r" % (i,len(self._orids)))
-            print >> sys.stderr, "loaded %d manual origins                " % ep.originCount()
+            print("loaded %d manual origins                " % ep.originCount(), file=sys.stderr)
 
         # finally dump event parameters as formatted XML archive to stdout
         ar = IO.XMLArchive()
