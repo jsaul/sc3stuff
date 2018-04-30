@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 
+from __future__ import print_function
 import sys, seiscomp3.Client, seiscomp3.DataModel
 
 class InvApp(seiscomp3.Client.Application):
@@ -52,7 +53,7 @@ class InvApp(seiscomp3.Client.Application):
 
             lines.sort()
             for line in lines:
-                print line
+                print(line)
 
             return True
         except:
