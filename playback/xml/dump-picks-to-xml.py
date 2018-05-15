@@ -1,12 +1,5 @@
 #!/usr/bin/env python
 
-###### configuration #######
-# time window relative to
-# origin time:
-before = 4*3600.   # 4 hours
-after  = 1*3600.   # 1 hour
-############################
-
 import sys, traceback
 from seiscomp3 import Core, Client, DataModel, Communication, IO
 
@@ -17,6 +10,9 @@ class PickLoader(Client.Application):
         self.setMessagingEnabled(False)
         self.setDatabaseEnabled(True, False)
         self._startTime = self._endTime = None
+        # time window relative to origin time of specified event:
+        self._before = 4*3600. # 4 hours
+        self._after  = 1*3600. # 1 hour
 
     def createCommandLineDescription(self):
         Client.Application.createCommandLineDescription(self)
@@ -24,6 +20,8 @@ class PickLoader(Client.Application):
         self.commandline().addStringOption("Dump", "begin", "specify start of time window")
         self.commandline().addStringOption("Dump", "end", "specify end of time window")
         self.commandline().addStringOption("Dump", "event", "compute a time window from the event")
+        self.commandline().addStringOption("Dump", "before", "start time window this many seconds before origin time")
+        self.commandline().addStringOption("Dump", "after",  "end time window this many seconds after origin time")
         self.commandline().addStringOption("Dump", "origins", "specify space separated list of origin ids to be also loaded")
         self.commandline().addStringOption("Dump", "network-blacklist", "specify space separated list of network codes to be excluded")
         self.commandline().addOption("Dump", "no-origins", "don't include any origins")
@@ -36,6 +34,7 @@ class PickLoader(Client.Application):
         try:    end = self.commandline().optionString("end")
         except: end = None
 
+
         try:
             orids = self.commandline().optionString("origins")
             self._orids = orids.split()
@@ -47,16 +46,24 @@ class PickLoader(Client.Application):
         except:
             self._evid = ""
 
+        # only if we got an event ID we need to look for "--before" and "--after"
+        if self._evid:
+            before = self.commandline().optionString("before")
+            after  = self.commandline().optionString("after")
+            if before:
+                self._before = float(before)
+            if after:
+                self._after = float(after)
 
         if start:
             self._startTime = Core.Time.GMT()
             if self._startTime.fromString(start, "%F %T") == False:
-                print >> sys.stderr, "Wrong 'begin' format"
+                sys.stderr.write("Wrong 'begin' format\n")
                 return False
         if end:
             self._endTime = Core.Time.GMT()
             if self._endTime.fromString(end, "%F %T") == False:
-                print >> sys.stderr, "Wrong 'end' format"
+                sys.stderr.write("Wrong 'end' format\n")
                 return False
 
         try:
@@ -86,9 +93,9 @@ class PickLoader(Client.Application):
                 org = dbq.loadObject(DataModel.Origin.TypeInfo(), orid)
                 org = DataModel.Origin.Cast(org)
                 t0 = org.time().value()
-                self._startTime = t0 + Core.TimeSpan(-before)
-                self._endTime   = t0 + Core.TimeSpan(after)
-                print>>sys.stderr, "time window: %s ... %s" % (self._startTime, self._endTime)
+                self._startTime = t0 + Core.TimeSpan(-self._before)
+                self._endTime   = t0 + Core.TimeSpan( self._after)
+                sys.stderr.write("time window: %s ... %s\n" % (self._startTime, self._endTime))
 
             if not self.commandline().hasOption("no-origins"):
                 # Loop over all origins of the event
@@ -111,7 +118,7 @@ class PickLoader(Client.Application):
                     continue
                 picks.append(pick)
                 ep.add(pick)
-        print >> sys.stderr, "loaded %d picks                         " % ep.pickCount()
+        sys.stderr.write("loaded %d picks                         \n" % ep.pickCount())
 
         for i,pick in enumerate(picks):
             # amplitude query loop for each pick, see above comments.
@@ -120,7 +127,7 @@ class PickLoader(Client.Application):
                 if ampl:
                     ep.add(ampl)
             sys.stderr.write("loaded amplitudes for %d of %d picks\r" % (i,len(picks)))
-        print >> sys.stderr, "loaded %d amplitudes                    " % ep.amplitudeCount()
+        sys.stderr.write("loaded %d amplitudes                    \n" % ep.amplitudeCount())
 
         if not self.commandline().hasOption("no-origins"):
             for i,orid in enumerate(self._orids):
@@ -135,7 +142,7 @@ class PickLoader(Client.Application):
                 org = DataModel.Origin.Cast(obj)
                 ep.add(org)
                 sys.stderr.write("loaded %d of %d manual origins\r" % (i,len(self._orids)))
-            print >> sys.stderr, "loaded %d manual origins                " % ep.originCount()
+            sys.stderr.write("loaded %d manual origins                \n" % ep.originCount())
 
         # finally dump event parameters as formatted XML archive to stdout
         ar = IO.XMLArchive()
