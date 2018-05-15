@@ -25,6 +25,7 @@ class EventLoaderApp(seiscomp3.Client.Application):
     """
 
     def __init__(self, argc, argv):
+        argv = [ bytes(a.encode()) for a in argv ]
         self.setXmlEnabled(True)
         seiscomp3.Client.Application.__init__(self, argc, argv)
         self.setMessagingEnabled(False)
@@ -86,7 +87,7 @@ class EventLoaderApp(seiscomp3.Client.Application):
         # TODO: filter only items related to self._eventID if set
         ep = sc3stuff.util.readEventParametersFromXML(self._xmlFile)
         if ep is None:
-            raise TypeError, self._xmlFile + ": no EventParameters found"
+            raise TypeError(self._xmlFile + ": no EventParameters found")
         return ep
 
 

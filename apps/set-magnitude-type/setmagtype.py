@@ -99,7 +99,7 @@ class PreferredMagnitudeTypeSetterApp(EventLoaderApp):
             if self._magType[0].upper() == "M":
                 return self.fixMagnitudeType(self._magType)
 
-            raise ValueError, "Don't know what to do with magnitude %s" % self._magType
+            raise ValueError("Don't know what to do with magnitude %s" % self._magType)
 
         return True
 

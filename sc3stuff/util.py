@@ -11,13 +11,13 @@ def readEventParametersFromXML(xmlFile):
     """
     ar = seiscomp3.IO.XMLArchive()
     if ar.open(xmlFile) == False:
-        raise IOError, xmlFile + ": unable to open"
+        raise IOError(xmlFile + ": unable to open")
     obj = ar.readObject()
     if obj is None:
-        raise TypeError, xmlFile + ": invalid format"
+        raise TypeError(xmlFile + ": invalid format")
     ep  = seiscomp3.DataModel.EventParameters.Cast(obj)
     if ep is None:
-        raise TypeError, xmlFile + ": no eventparameters found"
+        raise TypeError(xmlFile + ": no eventparameters found")
     return ep
 
 
