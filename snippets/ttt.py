@@ -3,6 +3,7 @@
 # This is just a little example to illustrate the computation
 # of teleseismic traveltimes for the iasp91 velocity model in SC3.
 
+from __future__ import print_function
 from seiscomp3.Seismology import TravelTimeTable
 
 # uses the iasp91 tables
@@ -19,6 +20,6 @@ ttlist = ttt.compute(lat1, lon1, dep1, lat2, lon2, alt2)
 
 # iterate over traveltimes and do something with it
 for tt in ttlist:
-    print tt.phase, tt.time
+    print(tt.phase, tt.time)
 
 

@@ -1,3 +1,4 @@
+from __future__ import print_function
 import sys, seiscomp3.Core, seiscomp3.Client
 
 class WaveformApp(seiscomp3.Client.StreamApplication):
@@ -20,7 +21,7 @@ class WaveformApp(seiscomp3.Client.StreamApplication):
         return True
 
     def handleRecord(self, rec):
-        print rec.stationCode(), rec.startTime()
+        print(rec.stationCode(), rec.startTime())
         return True
 
 app = WaveformApp(len(sys.argv), sys.argv)
