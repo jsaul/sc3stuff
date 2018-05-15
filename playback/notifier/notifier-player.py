@@ -4,6 +4,7 @@ import seiscomp3.Core, seiscomp3.Client, seiscomp3.DataModel, seiscomp3.IO, seis
 class NotifierPlayer(seiscomp3.Client.Application):
 
     def __init__(self, argc, argv):
+        argv = [ bytes(a.encode()) for a in argv ]
         super(NotifierPlayer, self).__init__(argc, argv)
         self.setMessagingEnabled(False)
         self.setDatabaseEnabled(False, False)
@@ -59,10 +60,10 @@ class NotifierPlayer(seiscomp3.Client.Application):
         ar = seiscomp3.IO.XMLArchive(b)
         obj = ar.readObject()
         if obj is None:
-            raise TypeError, "got invalid xml"
+            raise TypeError("got invalid xml")
         nmsg = seiscomp3.DataModel.NotifierMessage.Cast(obj)
         if nmsg is None:
-            raise TypeError, self._xmlFile + ": no NotifierMessage object found"
+            raise TypeError(self._xmlFile + ": no NotifierMessage object found")
         return nmsg
 
     def run(self):
@@ -88,7 +89,10 @@ class NotifierPlayer(seiscomp3.Client.Application):
             if len(line.split()) == 3:
                 sharp, timestamp, nbytes = line.split()
             elif len(line.split()) == 4:
-                sharp, timestamp, sbytes = line.split()
+                sharp, timestamp, nbytes, sbytes = line.split()
+                assert sbytes == "bytes"
+            elif len(line.split()) == 5:
+                sharp, timestamp, md5hash, nbytes, sbytes = line.split()
                 assert sbytes == "bytes"
             else:
                 return False
@@ -122,7 +126,6 @@ class NotifierPlayer(seiscomp3.Client.Application):
     def updateObject(self, parent, obj):
         # in a usable player, this must be reimplemented
         seiscomp3.Logging.debug("updateObject class=%s parent=%s" % (obj.className(),parent))
-
 
 app = NotifierPlayer(len(sys.argv), sys.argv)
 sys.exit(app())

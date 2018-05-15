@@ -1,5 +1,12 @@
-import sys, os, gc, md5, logging, logging.handlers, StringIO
+import sys, os, gc, hashlib, logging, logging.handlers
 import seiscomp3.Client, seiscomp3.DataModel, seiscomp3.IO, seiscomp3.Logging
+
+try:
+    # Python >= 2.6
+    from io import BytesIO as StringIO
+except:
+    # Python < 2.6
+    from StringIO import StringIO
 
 
 def objectToXML(obj, expName = "trunk"):
@@ -28,12 +35,12 @@ def objectToXML(obj, expName = "trunk"):
     exp.setFormattedOutput(True)
 
     try:
-        io = StringIO.StringIO()
+        io = StringIO()
         sink = Sink(io)
         exp.write(sink, obj)
         return io.getvalue().strip()
-    except Exception, e:
-        seiscomp3.Logging.error(error + str(e))
+    except Exception as err:
+        seiscomp3.Logging.error(str(err))
 
     return None
 
@@ -53,6 +60,7 @@ class MyLogHandler(logging.handlers.TimedRotatingFileHandler):
 class NotifierLogger(seiscomp3.Client.Application):
 
     def __init__(self, argc, argv):
+        argv = [ bytes(a.encode()) for a in argv ]
         seiscomp3.Client.Application.__init__(self, argc, argv)
         self.setMessagingEnabled(True)
         self.addMessagingSubscription("PICK")
@@ -67,12 +75,15 @@ class NotifierLogger(seiscomp3.Client.Application):
         seiscomp3.DataModel.PublicObject.SetRegistrationEnabled(False) 
         self._logger = logging.getLogger("Rotating Log")
         self._logger.setLevel(logging.INFO)
-        handler = MyLogHandler("notifier-log", when="h", interval=1, backupCount=48)
+        # FIXME: clean up:
+        self._directory = "/home/saul/log/notifiers"
+        handler = MyLogHandler(self._directory+"/"+"notifier-log", when="h", interval=1, backupCount=48)
         self._logger.addHandler(handler)
 
     def _writeNotifier(self, xml):
         now = seiscomp3.Core.Time.GMT().toString("%Y-%m-%dT%H:%M:%S.%f000000")[:26]+"Z"
-        self._logger.info("####  %s  %s  %d bytes" % (now, md5.new(xml).hexdigest(), len(xml)))
+#       self._logger.info("####  %s  %s  %d bytes" % (now, hashlib.md5(xml).encode('utf-8').hexdigest(), len(xml)))
+        self._logger.info("####  %s  %s  %d bytes" % (now, hashlib.md5(xml).hexdigest(), len(xml)))
         self._logger.info(xml)
         gc.collect()
 
