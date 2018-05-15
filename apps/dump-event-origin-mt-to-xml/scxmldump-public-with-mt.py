@@ -15,7 +15,8 @@ from seiscomp3 import Core, Client, DataModel, Communication, IO
 class MomentTensorDumper(Client.Application):
 
     def __init__(self):
-        Client.Application.__init__(self, len(sys.argv), sys.argv)
+        argv = [ bytes(a.encode()) for a in sys.argv ]
+        Client.Application.__init__(self, len(argv), argv)
         self.setMessagingEnabled(False)
         self.setDatabaseEnabled(True, False)
         self._startTime = self._endTime = None
@@ -120,12 +121,12 @@ class MomentTensorDumper(Client.Application):
         # required info and if it can't be loaded, give up.
         event = self._loadEvent(evid)
         if event is None:
-            raise ValueError, "unknown event '" + evid + "'"
+            raise ValueError("unknown event '" + evid + "'")
 #       preferredOrigin = self._loadOrigin(event.preferredOriginID())
         preferredOrigin = self.query().getObject(DataModel.Origin.TypeInfo(), event.preferredOriginID())
         preferredOrigin = DataModel.Origin.Cast(preferredOrigin)
         if preferredOrigin is None:
-            raise ValueError, "unknown origin '" + event.preferredOriginID() + "'"
+            raise ValueError("unknown origin '" + event.preferredOriginID() + "'")
         # take care of origin references and leave just one for the preferred origin
         while (event.originReferenceCount() > 0):
             event.removeOriginReference(0)

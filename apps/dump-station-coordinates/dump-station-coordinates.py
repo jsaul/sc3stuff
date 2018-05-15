@@ -6,6 +6,7 @@ from sc3stuff.inventory import InventoryIterator
 
 class InvApp(seiscomp3.Client.Application):
     def __init__(self, argc, argv):
+        argv = [ bytes(a.encode()) for a in argv ]
         seiscomp3.Client.Application.__init__(self, argc, argv)
         self.setMessagingEnabled(False)
         self.setDatabaseEnabled(True, True)
