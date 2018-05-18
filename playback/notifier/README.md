@@ -30,5 +30,16 @@ Relevant scripts:
     the `notifier-logger.py` script. Need to specify start and end
     time as well as the input files.
 
+* `notifier-player.py`
+
+    Plays back notifiers from file. It doesn't do much, just
+    extracts the notifier messages from the notifier log and if the
+    time matches the time specified window if passes the message on
+    to `handleMessage()`. In a real-world program this workflow could
+    substitute an existing messaging workflow, without any changes needed
+    downstream. After all, the SC3 messaging is also based on notifier
+    messages and whether we retrieve these from a messaging or from an
+    XML file doesn't make much difference.
+
 All the stuff in here is experimental! Any feedback and suggestions are highly appreciated.
 
