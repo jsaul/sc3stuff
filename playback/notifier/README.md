@@ -30,6 +30,9 @@ Relevant scripts:
     the `notifier-logger.py` script. Need to specify start and end
     time as well as the input files.
 
+    Call it like e.g.
+>        python notifier-extract.py -s "2018-05-18T08:00:00Z" -e "2018-05-18T09:10:00Z" ~/log/notifiers/notifier-log.2018-05-18T0* > gfz2018jqzl-notifier-playback
+
 * `notifier-player.py`
 
     Plays back notifiers from file. It doesn't do much, just
