@@ -111,7 +111,15 @@ class NotifierPlayer(seiscomp3.Client.Application):
 
             nmsg = self._readNotifierMessageFromXML(xml.strip())
             self.sync(time)
-            self.handleMessage(nmsg)
+
+            # We either extract and handle all Notifier objects individually
+            for item in nmsg:
+                n = seiscomp3.DataModel.Notifier.Cast(item)
+                assert n is not None
+                n.apply()
+                self.handleNotifier(n)
+            # OR simply handle the NotifierMessage
+#           self.handleMessage(nmsg)
 
         return True
 
