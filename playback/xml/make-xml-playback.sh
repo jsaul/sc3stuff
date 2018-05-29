@@ -4,7 +4,7 @@ evt="$1" comment="$2"
 
 ###### configuration #######
 # Give address of database
-db="mysql://sysop:sysop@geofon-proc1/seiscomp3"
+db="mysql://sysop:sysop@geofon-proc/seiscomp3"
 ############################
 
 if test -z "$evt"
@@ -14,9 +14,7 @@ then
 fi
 
 #debug="--debug"
-
-test -x ~/.seiscomp3/env.sh && . ~/.seiscomp3/env.sh
-export PATH=$PATH:.
+timewindow="--event $evt --before=7200 --after=3600"
 
 mkdir -p config
 for f in grid.conf station.conf
@@ -25,7 +23,17 @@ do
 done
 
 mkdir -p "playbacks/$evt"
-dump-picks-to-xml.py $debug --event "$evt" -d "$db"   > "playbacks/$evt"/objects.xml
-test -z "$comment" || echo "$evt  $comment"           > "playbacks/$evt"/comment.txt
-dump-station-locations.py $debug -d "$db"             > "playbacks/$evt"/station-locations.txt
-scbulletin $debug -3 -d "$db" -E "$evt"               > "playbacks/$evt"/bulletin
+$HOME/seiscomp3/bin/seiscomp exec \
+    python dump-picks-to-xml.py $timewindow $debug -d "$db" \
+    > "playbacks/$evt"/objects.xml
+
+test -z "$comment" || echo "$evt  $comment" \
+    > "playbacks/$evt"/comment.txt
+
+$HOME/seiscomp3/bin/seiscomp exec \
+    python dump-station-locations.py $debug -d "$db" \
+    > "playbacks/$evt"/station-locations.txt
+
+$HOME/seiscomp3/bin/seiscomp exec \
+    scbulletin $debug -3 -d "$db" -E "$evt" \
+    > "playbacks/$evt"/bulletin
