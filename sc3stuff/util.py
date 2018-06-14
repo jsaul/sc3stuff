@@ -217,3 +217,11 @@ def format_time(time, digits=3):
 
 def automatic(obj):
     return obj.evaluationMode() == seiscomp3.DataModel.AUTOMATIC
+
+
+def parseTime(s):
+    for fmtstr in "%FT%TZ", "%FT%T.%fZ", "%F %T", "%F %T.%f":
+        t = seiscomp3.Core.Time.GMT()
+        if t.fromString(s, fmtstr):
+            return t
+    raise ValueError("could not parse time string '%s'" %s)
