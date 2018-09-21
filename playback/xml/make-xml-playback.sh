@@ -24,14 +24,14 @@ done
 
 mkdir -p "playbacks/$evt"
 $HOME/seiscomp3/bin/seiscomp exec \
-    python dump-picks-to-xml.py $timewindow $debug -d "$db" \
+    python sc3playback.dump-picks.py $timewindow $debug -d "$db" \
     > "playbacks/$evt"/objects.xml
 
 test -z "$comment" || echo "$evt  $comment" \
     > "playbacks/$evt"/comment.txt
 
 $HOME/seiscomp3/bin/seiscomp exec \
-    python dump-station-locations.py $debug -d "$db" \
+    python sc3playback.dump-stations.py $debug -d "$db" \
     > "playbacks/$evt"/station-locations.txt
 
 $HOME/seiscomp3/bin/seiscomp exec \
