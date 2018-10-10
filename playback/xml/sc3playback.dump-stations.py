@@ -52,13 +52,13 @@ class InvApp(seiscomp3.Client.Application):
                     start = sta.start()
                 except:
                     continue
-
                 try:
                     end = sta.end()
-                    if not start <= self.referenceTime <= end:
-                        continue
                 except:
-                    pass
+                    end = self.referenceTime
+
+                if not start <= self.referenceTime <= end:
+                    continue
 
                 lines.append(line)
 
