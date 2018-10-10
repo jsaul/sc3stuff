@@ -3,63 +3,70 @@
 from __future__ import print_function
 import sys, seiscomp3.Client, seiscomp3.DataModel
 
+def str2time(s):
+    t = seiscomp3.Core.Time.GMT()
+    if t.fromString(s, "%F %T"):
+        return t
+    if t.fromString(s, "%FT%TZ"):
+        return t
+    if t.fromString(s, "%FT%T"):
+        return t
+
 class InvApp(seiscomp3.Client.Application):
     def __init__(self, argc, argv):
         seiscomp3.Client.Application.__init__(self, argc, argv)
         self.setMessagingEnabled(False)
         self.setDatabaseEnabled(True, True)
         self.setLoggingToStdErr(True)
+        self.referenceTime = seiscomp3.Core.Time.GMT()
 
-    def validateParameters(self):
-        try:
-            if seiscomp3.Client.Application.validateParameters(self) == False:
-                return False
-
-            return True
-
-        except:
-            info = traceback.format_exception(*sys.exc_info())
-            for i in info: sys.stderr.write(i)
-            sys.exit(-1)
+    def createCommandLineDescription(self):
+        self.commandline().addGroup("Time")
+        self.commandline().addStringOption("Time", "reference-time,t", "reference time for inventory lookup")
 
     def run(self):
-        now = seiscomp3.Core.Time.GMT()
+        
         try:
-            lines = []
-            dbr = seiscomp3.DataModel.DatabaseReader(self.database())
-            inv = seiscomp3.DataModel.Inventory()
-            dbr.loadNetworks(inv) 
-            nnet = inv.networkCount()
-            for inet in xrange(nnet):
-                net = inv.network(inet)
-                dbr.load(net);
-                nsta = net.stationCount()
-                for ista in xrange(nsta):
-                    sta = net.station(ista)
-                    line = "%-2s %-5s %9.4f %9.4f %6.1f" % ( net.code(), sta.code(), sta.latitude(), sta.longitude(), sta.elevation() )
-                    try:
-                        start = sta.start()
-                    except:
-                        continue
-
-                    try:
-                        end = sta.end()
-                        if not start <= now <= end:
-                            continue
-                    except:
-                        pass
-
-                    lines.append(line)
-
-            lines.sort()
-            for line in lines:
-                print(line)
-
-            return True
+            referenceTime = self.commandline().optionString("reference-time")
         except:
-            info = traceback.format_exception(*sys.exc_info())
-            for i in info: sys.stderr.write(i)
-            sys.exit(-1)
+            referenceTime = None
+        if referenceTime:
+            if self.referenceTime.fromString(referenceTime, "%F %T") == False:
+                print("Wrong 'reference-time' format\n", file=sys.stderr)
+                return False
+            seiscomp3.Logging.debug("Reference time is %s" % self.referenceTime.toString("%FT%TZ"))
+
+        lines = []
+        dbr = seiscomp3.DataModel.DatabaseReader(self.database())
+        inv = seiscomp3.DataModel.Inventory()
+        dbr.loadNetworks(inv) 
+        nnet = inv.networkCount()
+        for inet in xrange(nnet):
+            net = inv.network(inet)
+            dbr.load(net);
+            nsta = net.stationCount()
+            for ista in xrange(nsta):
+                sta = net.station(ista)
+                line = "%-2s %-5s %9.4f %9.4f %6.1f" % ( net.code(), sta.code(), sta.latitude(), sta.longitude(), sta.elevation() )
+                try:
+                    start = sta.start()
+                except:
+                    continue
+
+                try:
+                    end = sta.end()
+                    if not start <= self.referenceTime <= end:
+                        continue
+                except:
+                    pass
+
+                lines.append(line)
+
+        lines.sort()
+        for line in lines:
+            print(line)
+
+        return True
 
 def main():
     app = InvApp(len(sys.argv), sys.argv)
