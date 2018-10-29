@@ -3,7 +3,7 @@
 
 import seiscomp3.DataModel, seiscomp3.IO
 
-def readEventParametersFromXML(xmlFile):
+def readEventParametersFromXML(xmlFile="-"):
     """
     Reads an EventParameters root element from a SC3 XML file. The
     EventParameters instance holds all event parameters as child
@@ -19,6 +19,15 @@ def readEventParametersFromXML(xmlFile):
     if ep is None:
         raise TypeError(xmlFile + ": no eventparameters found")
     return ep
+
+
+def writeEventParametersToXML(ep, xmlFile="-", formatted=True):
+    ar = seiscomp3.IO.XMLArchive()
+    ar.setFormattedOutput(formatted)
+    ar.create(xmlFile)
+    ar.writeObject(ep)
+    ar.close()
+    return True
 
 
 def EventParametersEvents(ep):
