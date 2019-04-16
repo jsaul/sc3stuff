@@ -19,7 +19,6 @@ class MomentTensorDumper(Client.Application):
         Client.Application.__init__(self, len(argv), argv)
         self.setMessagingEnabled(False)
         self.setDatabaseEnabled(True, False)
-        self._startTime = self._endTime = None
 
     def createCommandLineDescription(self):
         Client.Application.createCommandLineDescription(self)
