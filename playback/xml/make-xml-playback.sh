@@ -5,6 +5,7 @@ evt="$1" comment="$2"
 ###### configuration #######
 # Give address of database
 db="mysql://sysop:sysop@geofon-proc/seiscomp3"
+#db="mysql://sysop:sysop@geofon-proc2/seiscomp3_archive"
 ############################
 
 if test -z "$evt"
@@ -14,7 +15,7 @@ then
 fi
 
 #debug="--debug"
-timewindow="--event $evt --before=7200 --after=3600"
+timewindow="--event $evt --before=86400 --after=86400"
 
 mkdir -p config
 for f in grid.conf station.conf

@@ -76,7 +76,7 @@ class DumperApp(seiscomp3.Client.Application):
 
     def __init__(self, argc, argv):
         seiscomp3.Client.Application.__init__(self, argc, argv)
-        self.setMessagingEnabled(True)
+        self.setMessagingEnabled(False)
         self.setDatabaseEnabled(True, True)
         self.setLoggingToStdErr(True)
         self.setDaemonEnabled(False)

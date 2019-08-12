@@ -148,7 +148,7 @@ class PickPlayer(Client.Application):
             DataModel.Notifier.Disable()
             self.sync()
 
-        return
+        return True
 
 
     def _runStreamMode(self, stream=sys.stdin):
@@ -166,7 +166,7 @@ class PickPlayer(Client.Application):
                 ofile.close()
                 # in batch mode pick up data in temp file
                 self._runBatchMode()
-
+        return True
 
     def run(self):
 
