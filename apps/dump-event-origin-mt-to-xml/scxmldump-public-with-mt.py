@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 #
-# Dump origin, magnitude and moment tensor information for an event to SC3 XML.
+# Dump origin, magnitude and moment tensor information for an event to SeisComP XML.
 #
 # Could be invoked in a pipeline like:
 #
@@ -10,18 +10,18 @@
 # The above will dump the event information to QuakeML 1.2
 
 import sys, traceback
-from seiscomp3 import Core, Client, DataModel, Communication, IO
+import seiscomp.client, seiscomp.datamodel, seiscomp.io
 
-class MomentTensorDumper(Client.Application):
+class MomentTensorDumper(seiscomp.client.Application):
 
     def __init__(self):
         argv = [ bytes(a.encode()) for a in sys.argv ]
-        Client.Application.__init__(self, len(argv), argv)
+        seiscomp.client.Application.__init__(self, len(argv), argv)
         self.setMessagingEnabled(False)
         self.setDatabaseEnabled(True, False)
 
     def createCommandLineDescription(self):
-        Client.Application.createCommandLineDescription(self)
+        seiscomp.client.Application.createCommandLineDescription(self)
         self.commandline().addGroup("Dump")
         self.commandline().addStringOption("Dump", "event,E", "compute a time window from the event")
         self.commandline().addOption("Dump", "include-full-creation-info,I", "include full creation info")
@@ -47,7 +47,7 @@ class MomentTensorDumper(Client.Application):
 
     def _stripCreationInfo(self, obj):
         ## strip creationInfo entirely:
-        #empty = DataModel.CreationInfo()
+        #empty = seiscomp.datamodel.CreationInfo()
         #obj.setCreationInfo(empty)
         obj.creationInfo().setAuthor("")
 
@@ -62,8 +62,8 @@ class MomentTensorDumper(Client.Application):
         # Retrieve event from DB
         # May return None
         # use loadObject() because we want the complete descriptions
-        event = self.query().loadObject(DataModel.Event.TypeInfo(), evid)
-        event = DataModel.Event.Cast(event)
+        event = self.query().loadObject(seiscomp.datamodel.Event.TypeInfo(), evid)
+        event = seiscomp.datamodel.Event.Cast(event)
         if event:
             if event.eventDescriptionCount() == 0:
                 self.query().loadEventDescriptions(event)
@@ -76,9 +76,9 @@ class MomentTensorDumper(Client.Application):
         # Remark: An Origin can be loaded using loadObject() and
         # getObject(). The difference is that getObject() doesn't
         # load the arrivals hence is a *lot* faster.
-        # origin = self.query().loadObject(DataModel.Origin.TypeInfo(), orid)
-        origin = self.query().getObject(DataModel.Origin.TypeInfo(), orid)
-        origin = DataModel.Origin.Cast(origin)
+        # origin = self.query().loadObject(seiscomp.datamodel.Origin.TypeInfo(), orid)
+        origin = self.query().getObject(seiscomp.datamodel.Origin.TypeInfo(), orid)
+        origin = seiscomp.datamodel.Origin.Cast(origin)
         if origin:
             self._stripOrigin(origin)
             self._removeCommentsIfRequested(origin)
@@ -87,8 +87,8 @@ class MomentTensorDumper(Client.Application):
     def _loadMagnitude(self, orid):
         # Retrieve magnitude from DB
         # May return None
-        obj = self.query().getObject(DataModel.Magnitude.TypeInfo(), orid)
-        mag = DataModel.Magnitude.Cast(obj)
+        obj = self.query().getObject(seiscomp.datamodel.Magnitude.TypeInfo(), orid)
+        mag = seiscomp.datamodel.Magnitude.Cast(obj)
 #       if mag:
 #           self._stripMagnitude(mag)
 #           self._removeCommentsIfRequested(mag)
@@ -97,8 +97,8 @@ class MomentTensorDumper(Client.Application):
     def _loadFocalMechanism(self, fmid):
         # Retrieve FocalMechanism from DB
         # May return None
-        obj = self.query().getObject(DataModel.FocalMechanism.TypeInfo(), fmid)
-        fm = DataModel.FocalMechanism.Cast(obj)
+        obj = self.query().getObject(seiscomp.datamodel.FocalMechanism.TypeInfo(), fmid)
+        fm = seiscomp.datamodel.FocalMechanism.Cast(obj)
         if fm:
             self.query().loadMomentTensors(fm)
             for i in xrange(fm.momentTensorCount()):
@@ -107,6 +107,22 @@ class MomentTensorDumper(Client.Application):
         return fm
 
     def run(self):
+        ep = seiscomp.datamodel.EventParameters()
+        evids = self.commandline().optionString("event").split()
+        for evid in evids:
+            self.do_one_event(evid, ep)
+
+        # finally dump event parameters as formatted XML archive to stdout
+        ar = seiscomp.io.XMLArchive()
+        ar.setFormattedOutput(True)
+        ar.create("-")
+        ar.writeObject(ep)
+        ar.close()
+
+        del ep
+        return True
+
+    def do_one_event(self, evid, ep):
         """ Things to do:
         
         * load event
@@ -114,7 +130,6 @@ class MomentTensorDumper(Client.Application):
         * load at least the preferred magnitude if available, all magnitudes if requested
         * load focal mechanism incl. moment tensor depending on availability, incl. Mw from derived origin
         """
-        evid = self.commandline().optionString("event")
 
         # Load event and preferred origin. This is the minimum
         # required info and if it can't be loaded, give up.
@@ -122,15 +137,15 @@ class MomentTensorDumper(Client.Application):
         if event is None:
             raise ValueError("unknown event '" + evid + "'")
 #       preferredOrigin = self._loadOrigin(event.preferredOriginID())
-        preferredOrigin = self.query().getObject(DataModel.Origin.TypeInfo(), event.preferredOriginID())
-        preferredOrigin = DataModel.Origin.Cast(preferredOrigin)
+        preferredOrigin = self.query().getObject(seiscomp.datamodel.Origin.TypeInfo(), event.preferredOriginID())
+        preferredOrigin = seiscomp.datamodel.Origin.Cast(preferredOrigin)
         if preferredOrigin is None:
             raise ValueError("unknown origin '" + event.preferredOriginID() + "'")
         # take care of origin references and leave just one for the preferred origin
         while (event.originReferenceCount() > 0):
             event.removeOriginReference(0)
         if preferredOrigin:
-            event.add(DataModel.OriginReference(preferredOrigin.publicID()))
+            event.add(seiscomp.datamodel.OriginReference(preferredOrigin.publicID()))
         if self.commandline().hasOption("comments"):
             self.query().loadComments(preferredOrigin)
 
@@ -146,7 +161,7 @@ class MomentTensorDumper(Client.Application):
                 if mag.publicID() == event.preferredMagnitudeID():
                     preferredMagnitude = mag
                     break
-#           preferredMagnitude = DataModel.Magnitude.Find(event.preferredMagnitudeID())
+#           preferredMagnitude = seiscomp.datamodel.Magnitude.Find(event.preferredMagnitudeID())
             else:
                 # try to load it from database
                 preferredMagnitude = self._loadMagnitude(event.preferredMagnitudeID())
@@ -161,14 +176,14 @@ class MomentTensorDumper(Client.Application):
                 if event.preferredOriginID() == focalMechanism.triggeringOriginID():
                     triggeringOrigin = preferredOrigin
                 else:
-                    triggeringOrigin = self.query().getObject(DataModel.Origin.TypeInfo(), focalMechanism.triggeringOriginID())
-                    triggeringOrigin = DataModel.Origin.Cast(triggeringOrigin)
+                    triggeringOrigin = self.query().getObject(seiscomp.datamodel.Origin.TypeInfo(), focalMechanism.triggeringOriginID())
+                    triggeringOrigin = seiscomp.datamodel.Origin.Cast(triggeringOrigin)
 
             if focalMechanism.momentTensorCount() > 0:
                 momentTensor = focalMechanism.momentTensor(0) # FIXME What if there is more than one MT?
                 if momentTensor.derivedOriginID():
-                    derivedOrigin = self.query().getObject(DataModel.Origin.TypeInfo(), momentTensor.derivedOriginID())
-                    derivedOrigin = DataModel.Origin.Cast(derivedOrigin)
+                    derivedOrigin = self.query().getObject(seiscomp.datamodel.Origin.TypeInfo(), momentTensor.derivedOriginID())
+                    derivedOrigin = seiscomp.datamodel.Origin.Cast(derivedOrigin)
                 if momentTensor.momentMagnitudeID():
                     if momentTensor.momentMagnitudeID() == event.preferredMagnitudeID():
                         momentMagnitude = preferredMagnitude
@@ -177,14 +192,14 @@ class MomentTensorDumper(Client.Application):
 
             # take care of FocalMechanism and related references
             if derivedOrigin:
-                event.add(DataModel.OriginReference(derivedOrigin.publicID()))
+                event.add(seiscomp.datamodel.OriginReference(derivedOrigin.publicID()))
             if triggeringOrigin:
                 if event.preferredOriginID() != triggeringOrigin.publicID():
-                    event.add(DataModel.OriginReference(triggeringOrigin.publicID()))
+                    event.add(seiscomp.datamodel.OriginReference(triggeringOrigin.publicID()))
             while (event.focalMechanismReferenceCount() > 0):
                 event.removeFocalMechanismReference(0)
             if focalMechanism:
-                event.add(DataModel.FocalMechanismReference(focalMechanism.publicID()))
+                event.add(seiscomp.datamodel.FocalMechanismReference(focalMechanism.publicID()))
                 self._removeCommentsIfRequested(focalMechanism)
 
         # strip creation info
@@ -201,7 +216,6 @@ class MomentTensorDumper(Client.Application):
                         self._stripCreationInfo(org.magnitude(i))
 
         # populate EventParameters instance
-        ep = DataModel.EventParameters()
         ep.add(event)
         if preferredMagnitude and preferredMagnitude is not momentMagnitude:
             preferredOrigin.add(preferredMagnitude)
@@ -216,15 +230,6 @@ class MomentTensorDumper(Client.Application):
                 ep.add(derivedOrigin)
             ep.add(focalMechanism)
 
-        # finally dump event parameters as formatted XML archive to stdout
-        ar = IO.XMLArchive()
-        ar.setFormattedOutput(True)
-        ar.create("-")
-        ar.writeObject(ep)
-        ar.close()
-
-        del ep
-        return True
 
 def main():
     app = MomentTensorDumper()
