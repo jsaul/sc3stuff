@@ -1,10 +1,11 @@
 #!/usr/bin/env python
 
 from __future__ import print_function
-import sys, seiscomp3.Client, seiscomp3.DataModel
+import sys
+import seiscomp.core, seiscomp.client, seiscomp.datamodel, seiscomp.logging
 
 def str2time(s):
-    t = seiscomp3.Core.Time.GMT()
+    t = seiscomp.core.Time.GMT()
     if t.fromString(s, "%F %T"):
         return t
     if t.fromString(s, "%FT%TZ"):
@@ -12,13 +13,13 @@ def str2time(s):
     if t.fromString(s, "%FT%T"):
         return t
 
-class InvApp(seiscomp3.Client.Application):
+class InvApp(seiscomp.client.Application):
     def __init__(self, argc, argv):
-        seiscomp3.Client.Application.__init__(self, argc, argv)
+        seiscomp.client.Application.__init__(self, argc, argv)
         self.setMessagingEnabled(False)
         self.setDatabaseEnabled(True, True)
         self.setLoggingToStdErr(True)
-        self.referenceTime = seiscomp3.Core.Time.GMT()
+        self.referenceTime = seiscomp.core.Time.GMT()
 
     def createCommandLineDescription(self):
         self.commandline().addGroup("Time")
@@ -34,11 +35,11 @@ class InvApp(seiscomp3.Client.Application):
             if self.referenceTime.fromString(referenceTime, "%F %T") == False:
                 print("Wrong 'reference-time' format\n", file=sys.stderr)
                 return False
-            seiscomp3.Logging.debug("Reference time is %s" % self.referenceTime.toString("%FT%TZ"))
+            seiscomp.logging.debug("Reference time is %s" % self.referenceTime.toString("%FT%TZ"))
 
         lines = []
-        dbr = seiscomp3.DataModel.DatabaseReader(self.database())
-        inv = seiscomp3.DataModel.Inventory()
+        dbr = seiscomp.datamodel.DatabaseReader(self.database())
+        inv = seiscomp.datamodel.Inventory()
         dbr.loadNetworks(inv) 
         nnet = inv.networkCount()
         for inet in xrange(nnet):

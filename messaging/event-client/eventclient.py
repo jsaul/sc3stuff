@@ -1,15 +1,15 @@
 from __future__ import print_function
 import sys
-from seiscomp3.Core import Time, TimeSpan
-from seiscomp3.Client import Application
-from seiscomp3.DataModel import Event, Origin, Magnitude, PublicObject, FocalMechanism
-from seiscomp3.Communication import Protocol 
-import seiscomp3.Logging
+from seiscomp.core import Time, TimeSpan
+from seiscomp.client import Application
+from seiscomp.datamodel import Event, Origin, Magnitude, PublicObject, FocalMechanism
+from seiscomp.communication import Protocol 
+import seiscomp.logging
 
-info    = seiscomp3.Logging.info
-debug   = seiscomp3.Logging.info # XXX
-warning = seiscomp3.Logging.warning
-error   = seiscomp3.Logging.error
+info    = seiscomp.logging.info
+debug   = seiscomp.logging.info # XXX
+warning = seiscomp.logging.warning
+error   = seiscomp.logging.error
 
 
 # Compound event with preferred origin/magnitude on board as well as some relevant state variables

@@ -2,10 +2,10 @@
 # -*- coding: utf-8 -*-
 
 import sys
-import seiscomp3.Seismology
+import seiscomp.seismology
 
 # uses the iasp91 tables by default
-ttt = seiscomp3.Seismology.TravelTimeTable()
+ttt = seiscomp.seismology.TravelTimeTable()
 
 # iasp91 and ak135 are the only supported models
 ttt.setModel("ak135")

@@ -3,7 +3,7 @@
 
 from __future__ import print_function
 import sys, optparse
-import seiscomp3.Core
+import seiscomp.core
 
 description="%prog - extract notifiers from log based on start and end time"
 
@@ -48,7 +48,7 @@ def read_notifiers(filename, startTime, endTime):
             return
 
         assert sharp[0] == "#"
-        time = seiscomp3.Core.Time.GMT()
+        time = seiscomp.core.Time.GMT()
         time.fromString(timestamp, "%FT%T.%fZ")
         if startTime is not None and time < startTime:
             continue
@@ -68,7 +68,7 @@ def read_notifiers(filename, startTime, endTime):
 
 def parseTime(s):
     for fmtstr in "%FT%TZ", "%FT%T.%fZ":
-        t = seiscomp3.Core.Time.GMT()
+        t = seiscomp.core.Time.GMT()
         if t.fromString(s, fmtstr):
             return t
     raise ValueError("could not parse time string '%s'" %s)

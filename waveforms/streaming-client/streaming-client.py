@@ -1,18 +1,18 @@
 from __future__ import print_function
-import sys, seiscomp3.Core, seiscomp3.Client
+import sys, seiscomp.core, seiscomp.client
 
-class WaveformApp(seiscomp3.Client.StreamApplication):
+class WaveformApp(seiscomp.client.StreamApplication):
     def __init__(self, argc, argv):
-        seiscomp3.Client.StreamApplication.__init__(self, argc, argv)
+        seiscomp.client.StreamApplication.__init__(self, argc, argv)
         self.setMessagingEnabled(False)
         self.setDatabaseEnabled(False, False)
         self.setLoggingToStdErr(True)
 
     def init(self):
-        if not seiscomp3.Client.StreamApplication.init(self):
+        if not seiscomp.client.StreamApplication.init(self):
             return False
-        now = seiscomp3.Core.Time.GMT()
-        t1 = now + seiscomp3.Core.TimeSpan(-600)
+        now = seiscomp.core.Time.GMT()
+        t1 = now + seiscomp.core.TimeSpan(-600)
         t2 = now
         stream = self.recordStream()
         stream.addStream("GE", "KARP", "",   "BHZ", t1, t2)

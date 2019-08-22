@@ -1,15 +1,15 @@
 from __future__ import print_function
 import sys, os, errno, gc, hashlib, logging, logging.handlers
-import seiscomp3.Client, seiscomp3.DataModel, seiscomp3.IO, seiscomp3.Logging
+import seiscomp.client, seiscomp.datamodel, seiscomp.io, seiscomp.logging
 from io import BytesIO
 
 def objectToXML(obj, expName = "trunk"):
     # based on code contributed by Stephan Herrnkind
 
-    class Sink(seiscomp3.IO.ExportSink):
+    class Sink(seiscomp.io.ExportSink):
 
         def __init__(self, buf):
-            seiscomp3.IO.ExportSink.__init__(self)
+            seiscomp.io.ExportSink.__init__(self)
             self.buf = buf
             self.written = 0
 
@@ -19,12 +19,12 @@ def objectToXML(obj, expName = "trunk"):
             return size
 
     if not obj:
-        seiscomp3.Logging.error("could not serialize NULL object")
+        seiscomp.logging.error("could not serialize NULL object")
         return None
 
-    exp = seiscomp3.IO.Exporter.Create(expName)
+    exp = seiscomp.io.Exporter.Create(expName)
     if not exp:
-        seiscomp3.Logging.error("exporter '%s' not found" % expName)
+        seiscomp.logging.error("exporter '%s' not found" % expName)
         return None
     exp.setFormattedOutput(True)
 
@@ -34,7 +34,7 @@ def objectToXML(obj, expName = "trunk"):
         exp.write(sink, obj)
         return io.getvalue().strip()
     except Exception as err:
-        seiscomp3.Logging.error(str(err))
+        seiscomp.logging.error(str(err))
 
     return None
 
@@ -51,11 +51,11 @@ class MyLogHandler(logging.handlers.TimedRotatingFileHandler):
         os.system("gzip '" + self.baseFilename + "'.*-*-*T*:*:*Z &")
 
 
-class NotifierLogger(seiscomp3.Client.Application):
+class NotifierLogger(seiscomp.client.Application):
 
     def __init__(self, argc, argv):
         argv = [ bytes(a.encode()) for a in argv ]
-        seiscomp3.Client.Application.__init__(self, argc, argv)
+        seiscomp.client.Application.__init__(self, argc, argv)
         self.setMessagingEnabled(True)
         self.addMessagingSubscription("PICK")
         self.addMessagingSubscription("AMPLITUDE")
@@ -66,7 +66,7 @@ class NotifierLogger(seiscomp3.Client.Application):
         # do nothing with the notifiers except logging
         self.setAutoApplyNotifierEnabled(False)
         self.setInterpretNotifierEnabled(False)
-        seiscomp3.DataModel.PublicObject.SetRegistrationEnabled(False) 
+        seiscomp.datamodel.PublicObject.SetRegistrationEnabled(False) 
         self._logger = logging.getLogger("Rotating Log")
         self._logger.setLevel(logging.INFO)
 
@@ -76,7 +76,7 @@ class NotifierLogger(seiscomp3.Client.Application):
         return True
 
     def validateParameters(self):
-        if not seiscomp3.Client.Application.validateParameters(self):
+        if not seiscomp.client.Application.validateParameters(self):
             return False
         try:
             self._prefix = self.commandline().optionString("prefix")
@@ -87,19 +87,19 @@ class NotifierLogger(seiscomp3.Client.Application):
         return True
 
     def _writeNotifier(self, xml):
-        now = seiscomp3.Core.Time.GMT().toString("%Y-%m-%dT%H:%M:%S.%f000000")[:26]+"Z"
+        now = seiscomp.core.Time.GMT().toString("%Y-%m-%dT%H:%M:%S.%f000000")[:26]+"Z"
 #       self._logger.info("####  %s  %s  %d bytes" % (now, hashlib.md5(xml).encode('utf-8').hexdigest(), len(xml)))
         self._logger.info("####  %s  %s  %d bytes" % (now, hashlib.md5(xml).hexdigest(), len(xml)))
         self._logger.info(xml)
         gc.collect()
 
     def handleMessage(self, msg):
-        nmsg = seiscomp3.DataModel.NotifierMessage.Cast(msg)
+        nmsg = seiscomp.datamodel.NotifierMessage.Cast(msg)
         if nmsg:
             xml = objectToXML(nmsg)
             if xml:
                 self._writeNotifier(xml)
-#       seiscomp3.Client.Application.handleMessage(self, msg)
+#       seiscomp.client.Application.handleMessage(self, msg)
 
 
 if __name__ == "__main__":

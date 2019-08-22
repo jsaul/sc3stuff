@@ -20,8 +20,8 @@
 #    59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.             #
 ############################################################################
 
-import sys, os, glob, traceback
-import seiscomp3.Core, seiscomp3.Client, seiscomp3.IO
+import sys, os, glob
+import seiscomp.core, seiscomp.datamodel, seiscomp.io, seiscomp.logging
 import sc3stuff.eventloader, sc3stuff.util
 
 beforeP = afterP = 360
@@ -32,7 +32,7 @@ def usage(exitcode=0):
 
 def RecordIterator(recordstream, showprogress=False):
         count = 0
-        inp = seiscomp3.IO.RecordInput(recordstream, seiscomp3.Core.Array.INT, seiscomp3.Core.Record.SAVE_RAW)
+        inp = seiscomp.io.RecordInput(recordstream, seiscomp.core.Array.INT, seiscomp.core.Record.SAVE_RAW)
         while 1:
             try:
                 rec = inp.next()
@@ -72,7 +72,7 @@ class RecordDumperApp(sc3stuff.eventloader.EventLoaderApp):
             if arr.weight() < 0.1:
                 continue
 
-            phase_whitelist = ["P","Pn","Pg","Pb","Pdiff","PKP"]
+            phase_whitelist = ["P","Pn","Pg","Pb","Pdiff","PKP","S","Sg"]
 # uncomment this to allow all phases (incl. S)
 #           phase_whitelist = None
             if phase_whitelist:
@@ -80,7 +80,7 @@ class RecordDumperApp(sc3stuff.eventloader.EventLoaderApp):
                 if phase not in phase_whitelist:
                     continue
 
-            p = seiscomp3.DataModel.Pick.Find(arr.pickID())
+            p = seiscomp.datamodel.Pick.Find(arr.pickID())
             if p is None:
                 continue
             t0 = p.time().value()
@@ -94,7 +94,7 @@ class RecordDumperApp(sc3stuff.eventloader.EventLoaderApp):
         expected_filenames = []
         done_nslc = []
         for dist, arr in self.dist_arr:
-            p = seiscomp3.DataModel.Pick.Find(arr.pickID())
+            p = seiscomp.datamodel.Pick.Find(arr.pickID())
             if p is None:
                 continue
             wfid = p.waveformID()
@@ -113,14 +113,14 @@ class RecordDumperApp(sc3stuff.eventloader.EventLoaderApp):
             if len(cha) == 2:
                 cha = cha+"Z"
             t0 = p.time().value()
-            t1, t2 = t0 + seiscomp3.Core.TimeSpan(-beforeP), t0 + seiscomp3.Core.TimeSpan(afterP)
+            t1, t2 = t0 + seiscomp.core.TimeSpan(-beforeP), t0 + seiscomp.core.TimeSpan(afterP)
             waveform_windows.append( (t1, t2, net, sta, loc, cha) )
             expected_filenames.append("%s/%s.%s.%s.%s.mseed" % (evt.publicID(), net, sta, loc, cha))
             done_nslc.append(nslc)
 
         # request waveforms and dump them to one file per stream
         data = {}
-        stream = seiscomp3.IO.RecordStream.Open(self.recordStreamURL())
+        stream = seiscomp.io.RecordStream.Open(self.recordStreamURL())
         stream.setTimeout(300)
         for t1, t2, net, sta, loc, cha in waveform_windows:
             for c in "ZNE12":
@@ -156,7 +156,7 @@ class RecordDumperApp(sc3stuff.eventloader.EventLoaderApp):
 
         pick_lines = []
         for dist, arr in self.dist_arr:
-            p = seiscomp3.DataModel.Pick.Find(arr.pickID())
+            p = seiscomp.datamodel.Pick.Find(arr.pickID())
             if p is None:
                 continue
 
@@ -169,7 +169,7 @@ class RecordDumperApp(sc3stuff.eventloader.EventLoaderApp):
             t0 = p.time().value()
 
             pst = "A"
-            if p.evaluationMode() != seiscomp3.DataModel.AUTOMATIC:
+            if p.evaluationMode() != seiscomp.datamodel.AUTOMATIC:
                 pst = "M"
             amp = per = snr = 0.
 
@@ -192,12 +192,12 @@ class RecordDumperApp(sc3stuff.eventloader.EventLoaderApp):
             pass # we interpret this as already existing event directory
         
         self.dist_arr = self._getDistancesArrivalsSorted(org)
-        seiscomp3.Logging.info("dumping waveforms for preferred origin '%s'" % org.publicID())
+        seiscomp.logging.info("dumping waveforms for preferred origin '%s'" % org.publicID())
         self._dumpWaveform(evt, org)
-        seiscomp3.Logging.info("dumping waveforms for preferred origin '%s' FINISHED" % org.publicID())
-        seiscomp3.Logging.info("dumping picks for preferred origin '%s'" % org.publicID())
+        seiscomp.logging.info("dumping waveforms for preferred origin '%s' FINISHED" % org.publicID())
+        seiscomp.logging.info("dumping picks for preferred origin '%s'" % org.publicID())
         self._dumpPickList(evt, org)
-        seiscomp3.Logging.info("dumping picks for preferred origin '%s' FINISHED" % org.publicID())
+        seiscomp.logging.info("dumping picks for preferred origin '%s' FINISHED" % org.publicID())
 
         #################################################################
         ### If you don't want to dump the picks for the largest automatic
@@ -216,14 +216,14 @@ class RecordDumperApp(sc3stuff.eventloader.EventLoaderApp):
             sorted = []
             for org in origins:
                 # there should be a cleaner way...
-                org = seiscomp3.DataModel.Origin.Cast(org)
+                org = seiscomp.datamodel.Origin.Cast(org)
                 if not org: continue
-                org = self.query().loadObject(seiscomp3.DataModel.Origin.TypeInfo(), org.publicID())
+                org = self.query().loadObject(seiscomp.datamodel.Origin.TypeInfo(), org.publicID())
                 if not org: continue
-                org = seiscomp3.DataModel.Origin.Cast(org)
+                org = seiscomp.datamodel.Origin.Cast(org)
                 if not org: continue
                 try:
-                    if org.evaluationMode() != seiscomp3.DataModel.AUTOMATIC:
+                    if org.evaluationMode() != seiscomp.datamodel.AUTOMATIC:
                         continue
                 except:
                     continue
@@ -232,30 +232,22 @@ class RecordDumperApp(sc3stuff.eventloader.EventLoaderApp):
                 # get origin with largest arrival count
                 sorted.sort()
                 arrivalCount, org = sorted[-1]
-                seiscomp3.Logging.info("dumping picks for automatic origin '%s'" % org.publicID())
+                seiscomp.logging.info("dumping picks for automatic origin '%s'" % org.publicID())
                 # we need to load arrivals and picks for that origin as well
                 self.dist_arr = self._getDistancesArrivalsSorted(org)
                 self._dumpPickList(evt, org, filename="picks-automatic")
 
     def run(self):
         try:
-            try:
-                eventID = self.commandline().optionString("event")
-            except:
-                sys.stderr.write("You must specify event id\n")
-                return False
-
-            self.dumpEvent(eventID)
-            return True
-
+            eventID = self.commandline().optionString("event")
         except:
-            info = traceback.format_exception(*sys.exc_info())
-            for i in info: sys.stderr.write(i)
-            sys.exit(-1)
+            sys.stderr.write("You must specify event id\n")
+            return False
 
-def main():
-    app = RecordDumperApp(len(sys.argv), sys.argv)
-    app()
+        self.dumpEvent(eventID)
+        return True
+
 
 if __name__ == "__main__":
-    main()
+    app = RecordDumperApp(len(sys.argv), sys.argv)
+    app()

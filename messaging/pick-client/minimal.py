@@ -1,17 +1,16 @@
-from __future__ import print_function
-import sys, seiscomp3.Client, seiscomp3.DataModel
+import sys, seiscomp.client, seiscomp.datamodel
 
-class PickClient(seiscomp3.Client.Application):
+class PickClient(seiscomp.client.Application):
     def __init__(self, argc, argv):
-        seiscomp3.Client.Application.__init__(self,argc,argv)
+        seiscomp.client.Application.__init__(self,argc,argv)
         self.setMessagingEnabled(True)
         self.setLoggingToStdErr(True)
         self.addMessagingSubscription("PICK")
 
     def addObject(self, parentID, obj):
-        pick = seiscomp3.DataModel.Pick.Cast(obj)
+        pick = seiscomp.datamodel.Pick.Cast(obj)
         if pick:
-            print("new pick", pick.publicID())
+            print("new pick %s" % pick.publicID())
 
 app = PickClient(len(sys.argv), sys.argv)
 app()

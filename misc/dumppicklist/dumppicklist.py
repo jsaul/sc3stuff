@@ -9,13 +9,13 @@
 ############################################################################
 
 from __future__ import print_function
-import sys, traceback
-import seiscomp3.Client, seiscomp3.DataModel
+import sys
+import seiscomp.client, seiscomp.datamodel, seiscomp.logging
 import sc3stuff.util
 
 line_template = "%(time)s %(net)-2s %(sta)5s %(cha)3s %(loc)2s %(residual)7.2f %(delta)7.3f %(azimuth)5.1f %(status)s %(phase)-5s %(weight)g\n"
 
-yaml_template = """-
+yaml_template = """- id: %(pid)s
   net: %(net)s
   sta: %(sta)s
   loc: %(loc)s
@@ -27,7 +27,6 @@ yaml_template = """-
   status: %(status)s
   phase: %(phase)s
   weight: %(weight)g
-  id: %(pid)s
   author: %(author)s
 """
 
@@ -65,10 +64,10 @@ def printPickList(event, origin, pick, ampl, fm, min_weight=-1, f=sys.stdout):
                 f.write(yaml_template % _todict(p, a))
 
 
-class EventLoaderApp(seiscomp3.Client.Application):
+class EventLoaderApp(seiscomp.client.Application):
 
     def __init__(self, argc, argv):
-        seiscomp3.Client.Application.__init__(self, argc, argv)
+        seiscomp.client.Application.__init__(self, argc, argv)
         self.setMessagingEnabled(False)
         self.setLoggingToStdErr(True)
         self.setDaemonEnabled(False)
@@ -90,7 +89,7 @@ class EventLoaderApp(seiscomp3.Client.Application):
         # Thus e.g. enabling/disabling the database MUST take place HERE.
         # NEITHER in __init__(), where command line arguments are not yet accessible
         # NOR in init() where the database has been configured and set up already.
-        if not seiscomp3.Client.Application.validateParameters(self):
+        if not seiscomp.client.Application.validateParameters(self):
             return False
 
         try:
@@ -119,32 +118,32 @@ class EventLoaderApp(seiscomp3.Client.Application):
 
     def _readEventParametersFromDB(self):
         # load event and preferred origin
-        evt = self.query().loadObject(seiscomp3.DataModel.Event.TypeInfo(), self._eventID)
-        evt = seiscomp3.DataModel.Event.Cast(evt)
+        evt = self.query().loadObject(seiscomp.datamodel.Event.TypeInfo(), self._eventID)
+        evt = seiscomp.datamodel.Event.Cast(evt)
         if evt is None:
-            seiscomp3.Logging.error("unknown event '%s'" % self._eventID)
+            seiscomp.logging.error("unknown event '%s'" % self._eventID)
             return
         originID = evt.preferredOriginID()
-        org = self.query().loadObject(seiscomp3.DataModel.Origin.TypeInfo(), originID)
-        org = seiscomp3.DataModel.Origin.Cast(org)
+        org = self.query().loadObject(seiscomp.datamodel.Origin.TypeInfo(), originID)
+        org = seiscomp.datamodel.Origin.Cast(org)
         if not org:
-            seiscomp3.Logging.error("origin '%s' not loaded" % originID)
+            seiscomp.logging.error("origin '%s' not loaded" % originID)
             return
 
         pick = {}
         for obj in self.query().getPicks(originID):
-            p = seiscomp3.DataModel.Pick.Cast(obj)
+            p = seiscomp.datamodel.Pick.Cast(obj)
             key = p.publicID()
             pick[key] = p
 
         ampl = {}
         for obj in self.query().getAmplitudesForOrigin(originID):
-            amp = seiscomp3.DataModel.Amplitude.Cast(obj)
+            amp = seiscomp.datamodel.Amplitude.Cast(obj)
             key = amp.publicID()
             ampl[key] = amp
 
         # create and populate EventParameters instance
-        ep = seiscomp3.DataModel.EventParameters()
+        ep = seiscomp.datamodel.EventParameters()
         ep.add(evt)
         ep.add(org)
         for key in pick:
@@ -160,7 +159,7 @@ class EventLoaderApp(seiscomp3.Client.Application):
             ep = self._readEventParametersFromXML()
         else:
             if not self._eventID:
-                seiscomp3.Logging.error("need to specify at an event id to read from database")
+                seiscomp.logging.error("need to specify at an event id to read from database")
                 return False
             ep = self._readEventParametersFromDB()
         if not ep:

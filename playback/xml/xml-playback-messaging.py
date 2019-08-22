@@ -1,10 +1,10 @@
 import sys, os, time, tempfile
-from seiscomp3 import Core, Client, DataModel, Communication, IO, Logging
+import seiscomp.core, seiscomp.client, seiscomp.datamodel, seiscomp.io, seiscomp.logging
 
-class PickPlayer(Client.Application):
+class PickPlayer(seiscomp.client.Application):
 
     def __init__(self, argc, argv):
-        Client.Application.__init__(self, argc, argv)
+        seiscomp.client.Application.__init__(self, argc, argv)
         self.setMessagingEnabled(True)
         self.setDatabaseEnabled(False, False)
         self.setPrimaryMessagingGroup("PICK")
@@ -14,7 +14,7 @@ class PickPlayer(Client.Application):
         self.speed = 1
 
     def createCommandLineDescription(self):
-        Client.Application.createCommandLineDescription(self)
+        seiscomp.client.Application.createCommandLineDescription(self)
         self.commandline().addGroup("Mode");
         self.commandline().addOption("Mode", "test", "Do not send any object");
         self.commandline().addGroup("Play")
@@ -33,7 +33,7 @@ class PickPlayer(Client.Application):
         return True
 
     def init(self):
-        if not Client.Application.init(self):
+        if not seiscomp.client.Application.init(self):
             return False
 
         try:    start = self.commandline().optionString("begin")
@@ -57,12 +57,12 @@ class PickPlayer(Client.Application):
         except: self.speed = 1
 
         if start:
-            self._startTime = Core.Time.GMT()
+            self._startTime = seiscomp.core.Time.GMT()
             if self._startTime.fromString(start, "%F %T") == False:
                 sys.stderr.write("Wrong 'begin' format\n")
                 return False
         if end:
-            self._endTime = Core.Time.GMT()
+            self._endTime = seiscomp.core.Time.GMT()
             if self._endTime.fromString(end, "%F %T") == False:
                 sys.stderr.write("Wrong 'end' format\n")
                 return False
@@ -70,13 +70,13 @@ class PickPlayer(Client.Application):
         return True
 
     def _readEventParametersFromXML(self):
-        ar = IO.XMLArchive()
+        ar = seiscomp.io.XMLArchive()
         if ar.open(self._xmlFile) == False:
             raise IOError, self._xmlFile + ": unable to open"
         obj = ar.readObject()
         if obj is None:
             raise TypeError, self._xmlFile + ": invalid format"
-        ep  = DataModel.EventParameters.Cast(obj)
+        ep  = seiscomp.datamodel.EventParameters.Cast(obj)
         if ep is None:
             raise TypeError, self._xmlFile + ": no eventparameters found"
         return ep
@@ -88,17 +88,17 @@ class PickPlayer(Client.Application):
         objs = []
         while ep.pickCount() > 0:
             # FIXME: The cast hack forces the SC3 refcounter to be increased.
-            pick = DataModel.Pick.Cast(ep.pick(0))
+            pick = seiscomp.datamodel.Pick.Cast(ep.pick(0))
             ep.removePick(0)
             objs.append(pick)
         while ep.amplitudeCount() > 0:
             # FIXME: The cast hack forces the SC3 refcounter to be increased.
-            ampl = DataModel.Amplitude.Cast(ep.amplitude(0))
+            ampl = seiscomp.datamodel.Amplitude.Cast(ep.amplitude(0))
             ep.removeAmplitude(0)
             objs.append(ampl)
         while ep.originCount() > 0:
             # FIXME: The cast hack forces the SC3 refcounter to be increased.
-            origin = DataModel.Origin.Cast(ep.origin(0))
+            origin = seiscomp.datamodel.Origin.Cast(ep.origin(0))
             ep.removeOrigin(0)
             objs.append(origin)
         del ep
@@ -118,9 +118,9 @@ class PickPlayer(Client.Application):
         sortlist.sort()
 
         time_of_1st_object, obj = sortlist[0]
-        time_of_playback_start = Core.Time.GMT()
+        time_of_playback_start = seiscomp.core.Time.GMT()
 
-        ep = DataModel.EventParameters()
+        ep = seiscomp.datamodel.EventParameters()
         pickampl = {}
 
         # go through the sorted list of object and process them sequentially
@@ -128,16 +128,16 @@ class PickPlayer(Client.Application):
             if self.isExitRequested(): return
 
             if self.speed:
-                t = time_of_playback_start + Core.TimeSpan(float(t - time_of_1st_object) / self.speed)
-                while t > Core.Time.GMT():
+                t = time_of_playback_start + seiscomp.core.TimeSpan(float(t - time_of_1st_object) / self.speed)
+                while t > seiscomp.core.Time.GMT():
                     time.sleep(0.1)
 
             if obj.ClassName() not in [ "Pick", "Amplitude", "Origin" ]:
                 continue
 
-            DataModel.Notifier.Enable()
+            seiscomp.datamodel.Notifier.Enable()
             ep.add(obj)
-            msg = DataModel.Notifier.GetMessage()
+            msg = seiscomp.datamodel.Notifier.GetMessage()
             if self.commandline().hasOption("test"):
                 sys.stderr.write("Test mode - not sending %-10s %s\n" % (obj.ClassName(), obj.publicID()))
             else:
@@ -145,7 +145,7 @@ class PickPlayer(Client.Application):
                     sys.stderr.write("Sent %s %s\n" % (obj.ClassName(), obj.publicID()))
                 else:
                     sys.stderr.write("Failed to send %-10s %s\n" % (obj.ClassName(), obj.publicID()))
-            DataModel.Notifier.Disable()
+            seiscomp.datamodel.Notifier.Disable()
             self.sync()
 
         return True
@@ -171,13 +171,13 @@ class PickPlayer(Client.Application):
     def run(self):
 
         if self._xmlFile:
-            Logging.debug("running in batch mode")
-            Logging.debug("input file is %s" % self._xmlFile)
+            seiscomp.logging.debug("running in batch mode")
+            seiscomp.logging.debug("input file is %s" % self._xmlFile)
             return self._runBatchMode()
 
         self._xmlFile = tempfile.mktemp(".xml", dir=self._tmpDir)
-        Logging.debug("running in stream mode")
-        Logging.debug("temp file is %s" % self._xmlFile)
+        seiscomp.logging.debug("running in stream mode")
+        seiscomp.logging.debug("temp file is %s" % self._xmlFile)
         status = self._runStreamMode()
         if os.path.exists(self._xmlFile):
             os.unlink(self._xmlFile)

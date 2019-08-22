@@ -1,18 +1,18 @@
 from __future__ import print_function
 import sys, select
-from seiscomp3 import Core, Client, DataModel
+import seiscomp.core, seiscomp.client, seiscomp.datamodel
 
-class PickSender(Client.Application):
+class PickSender(seiscomp.client.Application):
 
     def __init__(self, argc, argv):
-        Client.Application.__init__(self, argc, argv)
+        seiscomp.client.Application.__init__(self, argc, argv)
         self.setMessagingEnabled(True)
         self.setDatabaseEnabled(False, False)
         self.setPrimaryMessagingGroup("PICK")
 
     def createCommandLineDescription(self):
         # adds option --test to the default options
-        Client.Application.createCommandLineDescription(self)
+        seiscomp.client.Application.createCommandLineDescription(self)
         self.commandline().addGroup("Mode");
         self.commandline().addOption("Mode", "test", "Do not send any object");
 
@@ -22,33 +22,33 @@ class PickSender(Client.Application):
         pickID, time, net, sta = line[0], line[1], line[2], line[3]
 
         # this will become the creation time
-        now = Core.Time.GMT()
-        time = Core.Time()
+        now = seiscomp.core.Time.GMT()
+        time = seiscomp.core.Time()
         time.fromString("2015-09-25T10:33:42","%Y-%m-%dT%H:%M:%S")
-        pick = DataModel.Pick.Create(pickID)
-        wfid = DataModel.WaveformStreamID()
+        pick = seiscomp.datamodel.Pick.Create(pickID)
+        wfid = seiscomp.datamodel.WaveformStreamID()
         wfid.setNetworkCode(net)
         wfid.setStationCode(sta)
         pick.setWaveformID(wfid)
-        crea = DataModel.CreationInfo()
+        crea = seiscomp.datamodel.CreationInfo()
         crea.setAuthor("pick import script")
         crea.setAgencyID("TEST")
         crea.setCreationTime(now)
         crea.setModificationTime(now)
         pick.setCreationInfo(crea)
-        pick.setEvaluationStatus(DataModel.REVIEWED)
-        pick.setEvaluationMode(DataModel.MANUAL)
-        pick.setTime(DataModel.TimeQuantity(time) )
+        pick.setEvaluationStatus(seiscomp.datamodel.REVIEWED)
+        pick.setEvaluationMode(seiscomp.datamodel.MANUAL)
+        pick.setTime(seiscomp.datamodel.TimeQuantity(time) )
         pick.setCreationInfo(crea)
         return pick
 
     def process(self, line):
         # parse one input line and send the resulting pick
-        ep = DataModel.EventParameters()
-        DataModel.Notifier.Enable()
+        ep = seiscomp.datamodel.EventParameters()
+        seiscomp.datamodel.Notifier.Enable()
         pick = self.parse(line)
         ep.add(pick)
-        msg = DataModel.Notifier.GetMessage()
+        msg = seiscomp.datamodel.Notifier.GetMessage()
         if self.commandline().hasOption("test"):
             print("I would now send pick", pick.publicID())
         else:
@@ -56,7 +56,7 @@ class PickSender(Client.Application):
                 print("Succeeded to send pick", pick.publicID())
             else:
                 print("Failed to send pick", pick.publicID())
-        DataModel.Notifier.Disable()
+        seiscomp.datamodel.Notifier.Disable()
 
     def poll(self):
         # while there is some input available on the input stream...
@@ -77,7 +77,7 @@ class PickSender(Client.Application):
         self.enableTimer(1)
         print("Hi! The PickSender is now starting.")
         # return to the Application's processing
-        return Client.Application.run(self)
+        return seiscomp.client.Application.run(self)
 
 if __name__ == "__main__":
     app = PickSender(len(sys.argv), sys.argv)

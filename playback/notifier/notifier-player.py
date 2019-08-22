@@ -1,7 +1,7 @@
 import sys, os
-import seiscomp3.Core, seiscomp3.Client, seiscomp3.DataModel, seiscomp3.IO, seiscomp3.Logging, seiscomp3.Utils
+import seiscomp.core, seiscomp.client, seiscomp.datamodel, seiscomp.io, seiscomp.logging, seiscomp.utils
 
-class NotifierPlayer(seiscomp3.Client.Application):
+class NotifierPlayer(seiscomp.client.Application):
 
     def __init__(self, argc, argv):
         argv = [ bytes(a.encode()) for a in argv ]
@@ -44,24 +44,24 @@ class NotifierPlayer(seiscomp3.Client.Application):
 #       except: self.speed = 1
 
         if start:
-            self._startTime = seiscomp3.Core.Time.GMT()
+            self._startTime = seiscomp.core.Time.GMT()
             if self._startTime.fromString(start, "%FT%TZ") == False:
-                seiscomp3.Logging.error("Wrong 'begin' format")
+                seiscomp.logging.error("Wrong 'begin' format")
                 return False
         if end:
             self._endTime = Core.Time.GMT()
             if self._endTime.fromString(end, "%FT%TZ") == False:
-                seiscomp3.Logging.error("Wrong 'end' format")
+                seiscomp.logging.error("Wrong 'end' format")
                 return False
         return True
 
     def _readNotifierMessageFromXML(self, xml):
-        b = seiscomp3.Utils.stringToStreambuf(xml)
-        ar = seiscomp3.IO.XMLArchive(b)
+        b = seiscomp.utils.stringToStreambuf(xml)
+        ar = seiscomp.io.XMLArchive(b)
         obj = ar.readObject()
         if obj is None:
             raise TypeError("got invalid xml")
-        nmsg = seiscomp3.DataModel.NotifierMessage.Cast(obj)
+        nmsg = seiscomp.datamodel.NotifierMessage.Cast(obj)
         if nmsg is None:
             raise TypeError(self._xmlFile + ": no NotifierMessage object found")
         return nmsg
@@ -70,7 +70,7 @@ class NotifierPlayer(seiscomp3.Client.Application):
         if not self._xmlFileName:
             return False
 
-        seiscomp3.Logging.debug("input file is %s" % self._xmlFileName)
+        seiscomp.logging.debug("input file is %s" % self._xmlFileName)
         self._xmlFile = file(self._xmlFileName)
 
         while True:
@@ -97,7 +97,7 @@ class NotifierPlayer(seiscomp3.Client.Application):
             else:
                 return False
             assert sharp[0] == "#"
-            time = seiscomp3.Core.Time.GMT()
+            time = seiscomp.core.Time.GMT()
             time.fromString(timestamp, "%FT%T.%fZ")
 
             if self._startTime is not None and time < self._startTime:
@@ -114,7 +114,7 @@ class NotifierPlayer(seiscomp3.Client.Application):
 
             # We either extract and handle all Notifier objects individually
             for item in nmsg:
-                n = seiscomp3.DataModel.Notifier.Cast(item)
+                n = seiscomp.datamodel.Notifier.Cast(item)
                 assert n is not None
                 n.apply()
                 self.handleNotifier(n)
@@ -125,15 +125,15 @@ class NotifierPlayer(seiscomp3.Client.Application):
 
     def sync(self, time):
         self._time = time
-        seiscomp3.Logging.debug("sync time=%s" % time.toString("%FT%T.%fZ"))
+        seiscomp.logging.debug("sync time=%s" % time.toString("%FT%T.%fZ"))
 
     def addObject(self, parent, obj):
         # in a usable player, this must be reimplemented
-        seiscomp3.Logging.debug("addObject class=%s parent=%s" % (obj.className(),parent))
+        seiscomp.logging.debug("addObject class=%s parent=%s" % (obj.className(),parent))
 
     def updateObject(self, parent, obj):
         # in a usable player, this must be reimplemented
-        seiscomp3.Logging.debug("updateObject class=%s parent=%s" % (obj.className(),parent))
+        seiscomp.logging.debug("updateObject class=%s parent=%s" % (obj.className(),parent))
 
 app = NotifierPlayer(len(sys.argv), sys.argv)
 sys.exit(app())

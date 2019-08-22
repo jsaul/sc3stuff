@@ -4,7 +4,7 @@
 # of teleseismic traveltimes for the iasp91 velocity model in SC3.
 
 from __future__ import print_function
-from seiscomp3.Seismology import TravelTimeTable
+from seiscomp.seismology import TravelTimeTable
 
 # uses the iasp91 tables
 ttt = TravelTimeTable()

@@ -8,21 +8,21 @@
 #########################################################################
 
 import sys
-from seiscomp3 import Core, DataModel, Client, Logging
+import seiscomp.core, seiscomp.datamodel, seiscomp.client, seiscomp.logging
 
 class MyFocMec: pass
 
-class FocalMechanismImporter(Client.Application):
+class FocalMechanismImporter(seiscomp.client.Application):
 
     def __init__(self, argc, argv):
-        Client.Application.__init__(self, argc, argv)
+        seiscomp.client.Application.__init__(self, argc, argv)
         self.setDatabaseEnabled(True, True)
         self.setMessagingEnabled(True)
         self.setPrimaryMessagingGroup("LOCATION")
         self.setRecordStreamEnabled(False)
 
     def createCommandLineDescription(self):
-        Client.Application.createCommandLineDescription(self)
+        seiscomp.client.Application.createCommandLineDescription(self)
         self.commandline().addGroup("Mode");
         self.commandline().addOption("Mode", "test", "Do not send any object");
         self.commandline().addGroup("Event");
@@ -32,7 +32,7 @@ class FocalMechanismImporter(Client.Application):
         self.commandline().addStringOption("Event", "mw", "moment magnitude")
 
     def init(self):
-        if not Client.Application.init(self):
+        if not seiscomp.client.Application.init(self):
             return False
         return True
 
@@ -69,62 +69,62 @@ class FocalMechanismImporter(Client.Application):
 
     def importFocalMechanism(self, eventID, fm):
 
-        now = Core.Time.GMT()
-        crea = DataModel.CreationInfo()
+        now = seiscomp.core.Time.GMT()
+        crea = seiscomp.datamodel.CreationInfo()
         crea.setAuthor("MT import script")
         crea.setAgencyID("TEST")
         crea.setCreationTime(now)
         crea.setModificationTime(now)
 
-        event = self.query().loadObject(DataModel.Event.TypeInfo(), eventID)
-        event = DataModel.Event.Cast(event)
+        event = self.query().loadObject(seiscomp.datamodel.Event.TypeInfo(), eventID)
+        event = seiscomp.datamodel.Event.Cast(event)
         if event is None:
-            Logging.error("unknown event '%s'" % eventID)
+            seiscomp.logging.error("unknown event '%s'" % eventID)
             return False
 
         originID = event.preferredOriginID()
-        origin = self.query().loadObject(DataModel.Origin.TypeInfo(), originID)
-        origin = DataModel.Origin.Cast(origin)
+        origin = self.query().loadObject(seiscomp.datamodel.Origin.TypeInfo(), originID)
+        origin = seiscomp.datamodel.Origin.Cast(origin)
         if not origin:
-            Logging.error("origin '%s' not loaded" % originID)
+            seiscomp.logging.error("origin '%s' not loaded" % originID)
             return False
 
         # clone origin to attach Mw to it
         publicID = "MT#Origin#"+origin.publicID()
-        origin = DataModel.Origin.Cast(origin.clone())
+        origin = seiscomp.datamodel.Origin.Cast(origin.clone())
         origin.setPublicID(publicID)
         origin.setCreationInfo(crea)
 
         if fm.Mw:
-            magnitude = DataModel.Magnitude.Create()
+            magnitude = seiscomp.datamodel.Magnitude.Create()
             magnitude.setCreationInfo(crea)
             magnitude.setStationCount(0)
-            magnitude.setMagnitude(DataModel.RealQuantity(fm.Mw))
+            magnitude.setMagnitude(seiscomp.datamodel.RealQuantity(fm.Mw))
             magnitude.setType("Mw")
             origin.add(magnitude)
 
         # create and populate a focal mechanism
         focmecID = "FM#"+eventID+now.toString("#%Y%m%d.%H%M%S.%f000000")[:20] 
-        focmec = DataModel.FocalMechanism.Create(focmecID)
+        focmec = seiscomp.datamodel.FocalMechanism.Create(focmecID)
         focmec.setTriggeringOriginID(originID)
 
         try:
-            np1 = DataModel.NodalPlane()
-            np1.setStrike( DataModel.RealQuantity(fm.str1) )
-            np1.setDip(    DataModel.RealQuantity(fm.dip1) )
-            np1.setRake(   DataModel.RealQuantity(fm.rak1) )
+            np1 = seiscomp.datamodel.NodalPlane()
+            np1.setStrike( seiscomp.datamodel.RealQuantity(fm.str1) )
+            np1.setDip(    seiscomp.datamodel.RealQuantity(fm.dip1) )
+            np1.setRake(   seiscomp.datamodel.RealQuantity(fm.rak1) )
         except AttributeError:
             np1 = None
 
         try:
-            np2 = DataModel.NodalPlane()
-            np2.setStrike( DataModel.RealQuantity(fm.str2) )
-            np2.setDip(    DataModel.RealQuantity(fm.dip2) )
-            np2.setRake(   DataModel.RealQuantity(fm.rak2) )
+            np2 = seiscomp.datamodel.NodalPlane()
+            np2.setStrike( seiscomp.datamodel.RealQuantity(fm.str2) )
+            np2.setDip(    seiscomp.datamodel.RealQuantity(fm.dip2) )
+            np2.setRake(   seiscomp.datamodel.RealQuantity(fm.rak2) )
         except AttributeError:
             npr21 = None
 
-        np = DataModel.NodalPlanes()
+        np = seiscomp.datamodel.NodalPlanes()
         if np1:
             np.setNodalPlane1(np1)
         if np2:
@@ -132,13 +132,13 @@ class FocalMechanismImporter(Client.Application):
  
         focmec.setNodalPlanes(np) 
         focmec.setCreationInfo(crea)
-        focmec.setEvaluationStatus(DataModel.REVIEWED)
-        focmec.setEvaluationMode(DataModel.MANUAL)
+        focmec.setEvaluationStatus(seiscomp.datamodel.REVIEWED)
+        focmec.setEvaluationMode(seiscomp.datamodel.MANUAL)
 
         # create moment tensor and populate it with (just) Mw
         momtenID = "MT#"+eventID+now.toString("#%Y%m%d.%H%M%S.%f000000")[:20] 
-        momten = DataModel.MomentTensor.Create(momtenID)
-        momten = DataModel.MomentTensor.Cast(momten)
+        momten = seiscomp.datamodel.MomentTensor.Create(momtenID)
+        momten = seiscomp.datamodel.MomentTensor.Cast(momten)
         momten.setDerivedOriginID(origin.publicID())
         if fm.Mw:
             momten.setMomentMagnitudeID(magnitude.publicID())
@@ -150,22 +150,22 @@ class FocalMechanismImporter(Client.Application):
 
         # add the created objects to the EventParameters
         # then retrieve and send corresponding notifier messages
-        ep = DataModel.EventParameters()
-        DataModel.Notifier.Enable()
+        ep = seiscomp.datamodel.EventParameters()
+        seiscomp.datamodel.Notifier.Enable()
         ep.add(focmec)
-        msg = DataModel.Notifier.GetMessage()
+        msg = seiscomp.datamodel.Notifier.GetMessage()
         if msg and not self.commandline().hasOption("test"):
             if not self.connection().send("FOCMECH", msg):
                 sys.stderr.write("Failed to send focmec %s\n" % focmecID)
-        DataModel.Notifier.Disable()
+        seiscomp.datamodel.Notifier.Disable()
 
-        DataModel.Notifier.Enable()
+        seiscomp.datamodel.Notifier.Enable()
         ep.add(origin)
-        msg = DataModel.Notifier.GetMessage()
+        msg = seiscomp.datamodel.Notifier.GetMessage()
         if msg and not self.commandline().hasOption("test"):
             if not self.connection().send("LOCATION", msg):
                 sys.stderr.write("Failed to send origin %s\n" % originID)
-        DataModel.Notifier.Disable()
+        seiscomp.datamodel.Notifier.Disable()
 
         return True
 

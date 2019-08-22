@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 ############################################################################
 #                                                                          #
-#    Copyright (C) 2015 by GFZ Potsdam                                     #
+#    Copyright (C) by GFZ Potsdam                                     #
 #                                                                          #
 #    author: Joachim Saul                                                  #
 #    email:  saul@gfz-potsdam.de                                           #
@@ -11,7 +11,7 @@
 
 from __future__ import print_function
 import sys, traceback, socket
-import seiscomp3.DataModel
+import seiscomp.core, seiscomp.datamodel
 import sc3stuff.util
 from sc3stuff.eventloader import EventLoaderApp
 
@@ -56,14 +56,14 @@ class PreferredMagnitudeTypeSetterApp(EventLoaderApp):
     # see ./src/gui-qt4/libs/seiscomp3/gui/datamodel/eventedit.cpp
 
     def sendJournal(self, action, params):
-        j = seiscomp3.DataModel.JournalEntry()
+        j = seiscomp.datamodel.JournalEntry()
         j.setObjectID(self._eventID)
         j.setAction(action)
         j.setParameters(params)
         j.setSender(self.name()+"@"+socket.gethostname())
-        j.setCreated(seiscomp3.Core.Time.GMT())
-        n = seiscomp3.DataModel.Notifier("Journaling", seiscomp3.DataModel.OP_ADD, j)
-        nm = seiscomp3.DataModel.NotifierMessage()
+        j.setCreated(seiscomp.core.Time.GMT())
+        n = seiscomp.datamodel.Notifier("Journaling", seiscomp.datamodel.OP_ADD, j)
+        nm = seiscomp.datamodel.NotifierMessage()
         nm.attach(n)
         if not self.connection().send("EVENT", nm):
             return False
@@ -90,7 +90,6 @@ class PreferredMagnitudeTypeSetterApp(EventLoaderApp):
         ep = self.readEventParameters()
 
         event, origin, pick, ampl, fm = sc3stuff.util.extractEventParameters(ep, self._eventID)
-#       print(event, origin)
 
         if self._magType is not None:
             if self._magType == "Mw":

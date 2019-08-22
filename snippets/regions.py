@@ -9,12 +9,12 @@
 
 from __future__ import print_function
 import sys
-import seiscomp3.Client, seiscomp3.Seismology
+import seiscomp.client, seiscomp.seismology
 
-class RegionApp(seiscomp3.Client.Application):
+class RegionApp(seiscomp.client.Application):
 
     def __init__(self, argc, argv):
-        seiscomp3.Client.Application.__init__(self, argc, argv)
+        seiscomp.client.Application.__init__(self, argc, argv)
         self.setMessagingEnabled(False)
         self.setDatabaseEnabled(False, False)
         self.setDaemonEnabled(False)
@@ -23,7 +23,7 @@ class RegionApp(seiscomp3.Client.Application):
 
     def run(self):
         lat, lon = 47.16, 9.54
-        reg = seiscomp3.Seismology.Regions()
+        reg = seiscomp.seismology.Regions()
         reg = reg.getRegionName(lat, lon)
         print(lat, lon, reg)
 

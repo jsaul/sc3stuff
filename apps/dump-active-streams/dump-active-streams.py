@@ -2,13 +2,13 @@
 
 from __future__ import print_function
 import traceback, sys
-import seiscomp3.Client, seiscomp3.DataModel
+import seiscomp.client, seiscomp.core, seiscomp.datamodel
 from sc3stuff.inventory import InventoryIterator
 
 
-class InvApp(seiscomp3.Client.Application):
+class InvApp(seiscomp.client.Application):
     def __init__(self, argc, argv):
-        seiscomp3.Client.Application.__init__(self, argc, argv)
+        seiscomp.client.Application.__init__(self, argc, argv)
         self.setMessagingEnabled(False)
         self.setDatabaseEnabled(True, True)
         self.setLoggingToStdErr(True)
@@ -16,16 +16,16 @@ class InvApp(seiscomp3.Client.Application):
         self.setLoadConfigModuleEnabled(True)
 
     def run(self):
-        now = seiscomp3.Core.Time.GMT()
+        now = seiscomp.core.Time.GMT()
         lines = []
         try:
             mod = self.configModule()
             for i in xrange(mod.configStationCount()):
                 cfg = mod.configStation(i)
-                setup = seiscomp3.DataModel.findSetup(cfg, self.name(), True)
+                setup = seiscomp.datamodel.findSetup(cfg, self.name(), True)
                 if not setup: continue
 
-                params = seiscomp3.DataModel.ParameterSet.Find(setup.parameterSetID())
+                params = seiscomp.datamodel.ParameterSet.Find(setup.parameterSetID())
                 if not params: continue
 
                 detecStream = None

@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 import sys, time, traceback
-import seiscomp3.Client, seiscomp3.DataModel
+import seiscomp.client, seiscomp.datamodel
 
 stream_whitelist = ["BH", "SH","HH"]
 component_whitelist = [] # set to ["Z"] for vertical component only
@@ -30,8 +30,8 @@ def filterStreams(streams):
 
 
 def getCurrentStreams(dbr):
-    now = seiscomp3.Core.Time.GMT()
-    inv = seiscomp3.DataModel.Inventory()
+    now = seiscomp.core.Time.GMT()
+    inv = seiscomp.datamodel.Inventory()
     dbr.loadNetworks(inv)
 
     result = []
@@ -72,10 +72,10 @@ def getCurrentStreams(dbr):
     return filterStreams(result)
 
 
-class DumperApp(seiscomp3.Client.Application):
+class DumperApp(seiscomp.client.Application):
 
     def __init__(self, argc, argv):
-        seiscomp3.Client.Application.__init__(self, argc, argv)
+        seiscomp.client.Application.__init__(self, argc, argv)
         self.setMessagingEnabled(False)
         self.setDatabaseEnabled(True, True)
         self.setLoggingToStdErr(True)
@@ -84,7 +84,7 @@ class DumperApp(seiscomp3.Client.Application):
 
     def validateParameters(self):
         try:
-            if seiscomp3.Client.Application.validateParameters(self) == False:
+            if seiscomp.client.Application.validateParameters(self) == False:
                 return False
             return True
 
@@ -100,13 +100,13 @@ class DumperApp(seiscomp3.Client.Application):
                 self.commandline().addStringOption("Dump", "event,E", "ID of event to dump")
                 self.commandline().addOption("Dump", "unsorted,U", "produce unsorted output (not suitable for direct playback!)")
             except:
-                seiscomp3.Logging.warning("caught unexpected error %s" % sys.exc_info())
+                seiscomp.logging.warning("caught unexpected error %s" % sys.exc_info())
         except:
             info = traceback.format_exception(*sys.exc_info())
             for i in info: sys.stderr.write(i)
 
     def get_and_write_data(self, t1, t2, out):
-        dbr = seiscomp3.DataModel.DatabaseReader(self.database())
+        dbr = seiscomp.datamodel.DatabaseReader(self.database())
         streams = getCurrentStreams(dbr)
 
         # split all streams into groups of same net
@@ -126,7 +126,7 @@ class DumperApp(seiscomp3.Client.Application):
             for attempt in xrange(number_of_attempts):
                 if self.isExitRequested(): return
 
-                stream = seiscomp3.IO.RecordStream.Open(self.recordStreamURL())
+                stream = seiscomp.io.RecordStream.Open(self.recordStreamURL())
                 stream.setTimeout(3600)
                 for net, sta, loc, cha in netsta_streams[netsta]:
                     if component_whitelist and cha[-1] not in component_whitelist:
@@ -134,7 +134,7 @@ class DumperApp(seiscomp3.Client.Application):
                     stream.addStream(net, sta, loc, cha, t1, t2)
 
                 count = 0
-                input = seiscomp3.IO.RecordInput(stream, seiscomp3.Core.Array.INT, seiscomp3.Core.Record.SAVE_RAW)
+                input = seiscomp.io.RecordInput(stream, seiscomp.core.Array.INT, seiscomp.core.Record.SAVE_RAW)
                 while 1:
                     try:
                         rec = input.next()
@@ -172,20 +172,20 @@ class DumperApp(seiscomp3.Client.Application):
 
     def dump(self, eventID):
         self._dbq = self.query()
-        evt = self._dbq.loadObject(seiscomp3.DataModel.Event.TypeInfo(), eventID)
-        evt = seiscomp3.DataModel.Event.Cast(evt)
+        evt = self._dbq.loadObject(seiscomp.datamodel.Event.TypeInfo(), eventID)
+        evt = seiscomp.datamodel.Event.Cast(evt)
         if evt is None:
             raise TypeError, "unknown event '" + eventID + "'"
 
         originID = evt.preferredOriginID()
-        org = self._dbq.loadObject(seiscomp3.DataModel.Origin.TypeInfo(), originID) 
-        org = seiscomp3.DataModel.Origin.Cast(org)
+        org = self._dbq.loadObject(seiscomp.datamodel.Origin.TypeInfo(), originID) 
+        org = seiscomp.datamodel.Origin.Cast(org)
 
         magID = evt.preferredMagnitudeID()
-        mag = self._dbq.loadObject(seiscomp3.DataModel.Magnitude.TypeInfo(), magID)
-        mag = seiscomp3.DataModel.Magnitude.Cast(mag)
+        mag = self._dbq.loadObject(seiscomp.datamodel.Magnitude.TypeInfo(), magID)
+        mag = seiscomp.datamodel.Magnitude.Cast(mag)
 
-        now = seiscomp3.Core.Time.GMT()
+        now = seiscomp.core.Time.GMT()
         try:
             val = mag.magnitude().value()
             if sort:
@@ -195,7 +195,7 @@ class DumperApp(seiscomp3.Client.Application):
             out = file(out, "w")
 
             t0 = org.time().value()
-            t1, t2 = t0 + seiscomp3.Core.TimeSpan(-before), t0 + seiscomp3.Core.TimeSpan(after)
+            t1, t2 = t0 + seiscomp.core.TimeSpan(-before), t0 + seiscomp.core.TimeSpan(after)
 
             self.get_and_write_data(t1,t2,out)
             return True
