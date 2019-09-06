@@ -36,7 +36,7 @@ def RecordIterator(recordstream, showprogress=False):
         while 1:
             try:
                 rec = inp.next()
-            except Exception, exc:
+            except Exception as exc:
                 sys.stderr.write("ERROR: " + str(exc) + "\n")
                 rec = None
 
@@ -67,7 +67,7 @@ class RecordDumperApp(sc3stuff.eventloader.EventLoaderApp):
     def _getDistancesArrivalsSorted(self, org):
         # sort arrival list by distance
         dist_arr = []
-        for i in xrange(org.arrivalCount()):
+        for i in range(org.arrivalCount()):
             arr = org.arrival(i)
             if arr.weight() < 0.1:
                 continue
@@ -126,18 +126,23 @@ class RecordDumperApp(sc3stuff.eventloader.EventLoaderApp):
             for c in "ZNE12":
                 stream.addStream(net, sta, loc, cha[:2]+c, t1, t2)
         for rec in RecordIterator(stream, showprogress=True):
+            b = rec.raw().str()
+            # b = rec.raw().bytes() # Python 3
             if not rec.streamID() in data:
-                data[rec.streamID()] = ""
+                # initialize data string
+                data[rec.streamID()] = b
+                continue
 
             # append binary (raw) MiniSEED record to data string
-            data[rec.streamID()] += rec.raw().str()
+            data[rec.streamID()] += b
         count = 0
         for key in data:
             count += len(data[key])/512
         sys.stderr.write("Read %d records for %d streams\n" % (count, len(data.keys())))
 
         for streamID in data:
-            file(evt.publicID()+"/"+streamID+".mseed", "w").write(data[streamID])
+            f = open(evt.publicID()+"/"+streamID+".mseed", "wb")
+            f.write(bytes(data[streamID]))
 
         # check for missing files (data we requested but which is missing)
         missing_filenames = []
@@ -150,7 +155,8 @@ class RecordDumperApp(sc3stuff.eventloader.EventLoaderApp):
             os.unlink(mffilename)
         if missing_filenames:
             missing_filenames.sort()
-            file(mffilename,"w").write("\n".join(missing_filenames))
+            f = open(mffilename,"w")
+            f.write("\n".join(missing_filenames))
 
     def _dumpPickList(self, evt, org, filename="picks"):
 
@@ -180,7 +186,8 @@ class RecordDumperApp(sc3stuff.eventloader.EventLoaderApp):
 
         # dump the pick lines to one single file
         pick_lines.sort()
-        file(evt.publicID()+"/"+filename, "w").write("%s\n" % "\n".join([ line for x,line in pick_lines ]))
+        f = open(evt.publicID()+"/"+filename, "w")
+        f.write("%s\n" % "\n".join([ line for x,line in pick_lines ]))
 
     def dumpEvent(self, eventID):
         evt, org, pick, ampl = self.loadAll(eventID)
@@ -213,7 +220,7 @@ class RecordDumperApp(sc3stuff.eventloader.EventLoaderApp):
         # as otherwise we get netsted queries, which are not allowed.
 
         if len(origins) > 0:
-            sorted = []
+            sortlist = []
             for org in origins:
                 # there should be a cleaner way...
                 org = seiscomp.datamodel.Origin.Cast(org)
@@ -227,11 +234,11 @@ class RecordDumperApp(sc3stuff.eventloader.EventLoaderApp):
                         continue
                 except:
                     continue
-                sorted.append( (org.arrivalCount(), org) )
-            if len(sorted) > 0:
+                sortlist.append( org )
+            if len(sortlist) > 0:
                 # get origin with largest arrival count
-                sorted.sort()
-                arrivalCount, org = sorted[-1]
+                sortlist.sort(key=lambda x: x.arrivalCount())
+                org = sortlist[-1]
                 seiscomp.logging.info("dumping picks for automatic origin '%s'" % org.publicID())
                 # we need to load arrivals and picks for that origin as well
                 self.dist_arr = self._getDistancesArrivalsSorted(org)
