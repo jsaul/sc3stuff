@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env seiscomp-python
 #
 # Dump origin, magnitude and moment tensor information for an event to SeisComP XML.
 #
@@ -9,13 +9,14 @@
 #
 # The above will dump the event information to QuakeML 1.2
 
-import sys, traceback
+import sys
 import seiscomp.client, seiscomp.datamodel, seiscomp.io
+
 
 class MomentTensorDumper(seiscomp.client.Application):
 
     def __init__(self):
-        argv = [ bytes(a.encode()) for a in sys.argv ]
+        argv = sys.argv
         seiscomp.client.Application.__init__(self, len(argv), argv)
         self.setMessagingEnabled(False)
         self.setDatabaseEnabled(True, False)
@@ -60,7 +61,10 @@ class MomentTensorDumper(seiscomp.client.Application):
 
     def _loadEvent(self, evid):
         # Retrieve event from DB
-        # May return None
+        #
+        # Returns either the event instance
+        # or None if event could not be loaded.
+        #
         # use loadObject() because we want the complete descriptions
         event = self.query().loadObject(seiscomp.datamodel.Event.TypeInfo(), evid)
         event = seiscomp.datamodel.Event.Cast(event)
@@ -72,7 +76,10 @@ class MomentTensorDumper(seiscomp.client.Application):
 
     def _loadOrigin(self, orid):
         # Retrieve origin from DB
-        # May return None
+        #
+        # Returns either the origin instance
+        # or None if origin could not be loaded.
+        #
         # Remark: An Origin can be loaded using loadObject() and
         # getObject(). The difference is that getObject() doesn't
         # load the arrivals hence is a *lot* faster.
@@ -86,7 +93,9 @@ class MomentTensorDumper(seiscomp.client.Application):
 
     def _loadMagnitude(self, orid):
         # Retrieve magnitude from DB
-        # May return None
+        # 
+        # Returns either the Magnitude instance
+        # or None if Magnitude could not be loaded.
         obj = self.query().getObject(seiscomp.datamodel.Magnitude.TypeInfo(), orid)
         mag = seiscomp.datamodel.Magnitude.Cast(obj)
 #       if mag:
@@ -96,12 +105,15 @@ class MomentTensorDumper(seiscomp.client.Application):
 
     def _loadFocalMechanism(self, fmid):
         # Retrieve FocalMechanism from DB
-        # May return None
+        # 
+        # Returns either the FocalMechanism instance
+        # or None if FocalMechanism could not be loaded.
+        #
         obj = self.query().getObject(seiscomp.datamodel.FocalMechanism.TypeInfo(), fmid)
         fm = seiscomp.datamodel.FocalMechanism.Cast(obj)
         if fm:
             self.query().loadMomentTensors(fm)
-            for i in xrange(fm.momentTensorCount()):
+            for i in range(fm.momentTensorCount()):
                 mt = fm.momentTensor(i)
                 self._stripMomentTensor(mt)
         return fm
@@ -110,6 +122,8 @@ class MomentTensorDumper(seiscomp.client.Application):
         ep = seiscomp.datamodel.EventParameters()
         evids = self.commandline().optionString("event").split()
         for evid in evids:
+            # each of the specified events is added to the
+            # EventParameters instance
             self.do_one_event(evid, ep)
 
         # finally dump event parameters as formatted XML archive to stdout
@@ -136,11 +150,10 @@ class MomentTensorDumper(seiscomp.client.Application):
         event = self._loadEvent(evid)
         if event is None:
             raise ValueError("unknown event '" + evid + "'")
-#       preferredOrigin = self._loadOrigin(event.preferredOriginID())
-        preferredOrigin = self.query().getObject(seiscomp.datamodel.Origin.TypeInfo(), event.preferredOriginID())
-        preferredOrigin = seiscomp.datamodel.Origin.Cast(preferredOrigin)
+        preferredOrigin = self._loadOrigin(event.preferredOriginID())
         if preferredOrigin is None:
             raise ValueError("unknown origin '" + event.preferredOriginID() + "'")
+
         # take care of origin references and leave just one for the preferred origin
         while (event.originReferenceCount() > 0):
             event.removeOriginReference(0)
@@ -176,14 +189,12 @@ class MomentTensorDumper(seiscomp.client.Application):
                 if event.preferredOriginID() == focalMechanism.triggeringOriginID():
                     triggeringOrigin = preferredOrigin
                 else:
-                    triggeringOrigin = self.query().getObject(seiscomp.datamodel.Origin.TypeInfo(), focalMechanism.triggeringOriginID())
-                    triggeringOrigin = seiscomp.datamodel.Origin.Cast(triggeringOrigin)
+                    triggeringOrigin = self._loadOrigin(focalMechanism.triggeringOriginID())
 
             if focalMechanism.momentTensorCount() > 0:
                 momentTensor = focalMechanism.momentTensor(0) # FIXME What if there is more than one MT?
                 if momentTensor.derivedOriginID():
-                    derivedOrigin = self.query().getObject(seiscomp.datamodel.Origin.TypeInfo(), momentTensor.derivedOriginID())
-                    derivedOrigin = seiscomp.datamodel.Origin.Cast(derivedOrigin)
+                    derivedOrigin = self._loadOrigin(momentTensor.derivedOriginID())
                 if momentTensor.momentMagnitudeID():
                     if momentTensor.momentMagnitudeID() == event.preferredMagnitudeID():
                         momentMagnitude = preferredMagnitude
@@ -207,12 +218,12 @@ class MomentTensorDumper(seiscomp.client.Application):
             self._stripCreationInfo(event)
             if focalMechanism:
                 self._stripCreationInfo(focalMechanism)
-                for i in xrange(focalMechanism.momentTensorCount()):
+                for i in range(focalMechanism.momentTensorCount()):
                     self._stripCreationInfo(focalMechanism.momentTensor(i))
             for org in [ preferredOrigin, triggeringOrigin, derivedOrigin ]:
                 if org is not None:
                     self._stripCreationInfo(org)
-                    for i in xrange(org.magnitudeCount()):
+                    for i in range(org.magnitudeCount()):
                         self._stripCreationInfo(org.magnitude(i))
 
         # populate EventParameters instance
