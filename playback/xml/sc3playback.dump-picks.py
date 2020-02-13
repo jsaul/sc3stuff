@@ -2,8 +2,10 @@
 
 from __future__ import print_function
 
-import sys, traceback
-import seiscomp.core, seiscomp.client, seiscomp.datamodel, seiscomp.communication, seiscomp.io, seiscomp.logging
+import sys
+import seiscomp.core, seiscomp.client, seiscomp.datamodel
+import seiscomp.io, seiscomp.logging
+
 
 def parse_time_string(s):
     t = seiscomp.core.Time.GMT()
@@ -11,6 +13,7 @@ def parse_time_string(s):
         if t.fromString(s, fmt):
             return t
     print("Wrong time format", file=sys.stderr)
+
 
 class PickLoader(seiscomp.client.Application):
 
@@ -83,20 +86,20 @@ class PickLoader(seiscomp.client.Application):
             return False
 
         dbq = self.query()
-        ep  = seiscomp.dataModel.EventParameters()
+        ep  = seiscomp.datamodel.EventParameters()
 
         # If we got an event ID as command-line argument...
         if self._evid:
             # Retrieve event from DB
-            evt = dbq.loadObject(seiscomp.dataModel.Event.TypeInfo(), self._evid)
-            evt = seiscomp.dataModel.Event.Cast(evt)
+            evt = dbq.loadObject(seiscomp.datamodel.Event.TypeInfo(), self._evid)
+            evt = seiscomp.datamodel.Event.Cast(evt)
             if evt is None:
-                raise TypeError, "unknown event '" + self._evid + "'"
+                raise TypeError("unknown event '" + self._evid + "'")
             # If start time was not specified, compute it from origin time.
             if self._startTime is None:
                 orid = evt.preferredOriginID()
-                org = dbq.loadObject(seiscomp.dataModel.Origin.TypeInfo(), orid)
-                org = seiscomp.dataModel.Origin.Cast(org)
+                org = dbq.loadObject(seiscomp.datamodel.Origin.TypeInfo(), orid)
+                org = seiscomp.datamodel.Origin.Cast(org)
                 t0 = org.time().value()
                 self._startTime = t0 + seiscomp.core.TimeSpan(-self._before)
                 self._endTime   = t0 + seiscomp.core.TimeSpan( self._after)
@@ -105,17 +108,17 @@ class PickLoader(seiscomp.client.Application):
             if not self.commandline().hasOption("no-origins"):
                 # Loop over all origins of the event
                 for org in dbq.getOrigins(self._evid):
-                    org = seiscomp.dataModel.Origin.Cast(org)
+                    org = seiscomp.datamodel.Origin.Cast(org)
                     # We only look for manual events.
-                    if org.evaluationMode() != seiscomp.dataModel.MANUAL:
+                    if org.evaluationMode() != seiscomp.datamodel.MANUAL:
                         continue
                     self._orids.append(org.publicID())
 
         picks = {}
         for obj in dbq.getPicks(self._startTime, self._endTime):
-            pick = seiscomp.dataModel.Pick.Cast(obj)
+            pick = seiscomp.datamodel.Pick.Cast(obj)
             if pick:
-                if pick.evaluationMode() == seiscomp.dataModel.MANUAL and self.commandline().hasOption("no-manual-picks"):
+                if pick.evaluationMode() == seiscomp.datamodel.MANUAL and self.commandline().hasOption("no-manual-picks"):
                     continue
                 if pick.waveformID().networkCode() in self._networkBlacklist:
                     continue
@@ -124,7 +127,7 @@ class PickLoader(seiscomp.client.Application):
         seiscomp.logging.debug("loaded %d picks" % ep.pickCount())
 
         for obj in dbq.getAmplitudes(self._startTime, self._endTime):
-            ampl = seiscomp.dataModel.Amplitude.Cast(obj)
+            ampl = seiscomp.datamodel.Amplitude.Cast(obj)
             if ampl:
                 if not ampl.pickID():
                     continue
@@ -137,14 +140,14 @@ class PickLoader(seiscomp.client.Application):
         if not self.commandline().hasOption("no-origins"):
             for i,orid in enumerate(self._orids):
                 # XXX There was occasionally a problem with:
-                #   org = dbq.loadObject(seiscomp.dataModel.Origin.TypeInfo(), orid)
-                #   org = seiscomp.dataModel.Origin.Cast(org)
+                #   org = dbq.loadObject(seiscomp.datamodel.Origin.TypeInfo(), orid)
+                #   org = seiscomp.datamodel.Origin.Cast(org)
                 # NOTE when org was directly overwritten.
                 # resulting in a segfault. The reason is not clear, but
                 # is most probably in the Python wrapper. The the segfault
                 # can be avoided by creating an intermediate object 'obj'.
-                obj = dbq.loadObject(seiscomp.dataModel.Origin.TypeInfo(), orid)
-                org = seiscomp.dataModel.Origin.Cast(obj)
+                obj = dbq.loadObject(seiscomp.datamodel.Origin.TypeInfo(), orid)
+                org = seiscomp.datamodel.Origin.Cast(obj)
                 ep.add(org)
             seiscomp.logging.debug("loaded %d manual origins" % ep.originCount())
 

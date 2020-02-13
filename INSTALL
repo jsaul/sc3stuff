@@ -1,0 +1,6 @@
+It is a good idea to install sc3stuff along with your SeisComP
+Python codes. The simplest way to do that is by copying the sc3stuff
+subfolder to the same folder as the SeisComP Python codes. If your
+Python installation is under $HOME/seiscomp, this would mean
+
+cp -pr sc3stuff $HOME/seiscomp/lib/python

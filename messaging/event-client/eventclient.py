@@ -388,7 +388,7 @@ class EventWatch(EventClient):
         except:
             pass
             
-        for i in xrange(foc.momentTensorCount()):
+        for i in range(foc.momentTensorCount()):
             mt = foc.momentTensor(i)
             try:
                 print("  clvd %.2f" % (mt.clvd()))
@@ -406,10 +406,10 @@ class EventWatch(EventClient):
 #           print("  dataUsedCount            %d" % mt.dataUsedCount())
             totalStationWeight = 0.
             totalComponentWeight = 0.
-            for k in xrange(mt.momentTensorStationContributionCount()):
+            for k in range(mt.momentTensorStationContributionCount()):
                 sc = mt.momentTensorStationContribution(k)
                 totalStationWeight += sc.weight()
-                for j in xrange(sc.momentTensorComponentContributionCount()):
+                for j in range(sc.momentTensorComponentContributionCount()):
                     cc = sc.momentTensorComponentContribution(j)
                     totalComponentWeight += cc.weight()
             print("  stationContribution %.2f" % totalStationWeight)

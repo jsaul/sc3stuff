@@ -7,10 +7,10 @@ def InventoryIterator(inventory, time=None):
     """
 
     nnet = inventory.networkCount()
-    for inet in xrange(nnet):
+    for inet in range(nnet):
         network = inventory.network(inet)
         nsta = network.stationCount()
-        for ista in xrange(nsta):
+        for ista in range(nsta):
             station = network.station(ista)
 
             if time is not None:
@@ -39,7 +39,7 @@ def InventoryIterator(inventory, time=None):
                 # At this point we know that this is an operational
                 # station at the specified time
 
-            for iloc in xrange(station.sensorLocationCount()):
+            for iloc in range(station.sensorLocationCount()):
                 location = station.sensorLocation(iloc)
 
                 for istr in range(location.streamCount()):

@@ -21,7 +21,7 @@ def read_notifiers(filename, startTime, endTime):
         import gzip
         f = gzip.open(filename)
     else:
-        f = file(filename)
+        f = open(filename)
 
     while True:
         while True:

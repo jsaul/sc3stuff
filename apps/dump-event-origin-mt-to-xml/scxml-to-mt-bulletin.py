@@ -220,22 +220,22 @@ class MomentTensorDumper(seiscomp.client.Application):
         seiscomp.client.Application.__init__(self, len(argv), argv)
         self.setMessagingEnabled(False)
         self.setDatabaseEnabled(False, False)
-        self._xmlFile = "stdin"
+        self.xmlInputFile = "stdin"
 
     def _readEventParametersFromXML(self):
         ar = seiscomp.io.XMLArchive()
-        if self._xmlFile == "stdin":
+        if self.xmlInputFile == "stdin":
             fname = "-"
         else:
-            fname = self._xmlFile
+            fname = self.xmlInputFile
         if ar.open(fname) == False:
-            raise IOError(self._xmlFile + ": unable to open")
+            raise IOError(self.xmlInputFile + ": unable to open")
         obj = ar.readObject()
         if obj is None:
-            raise TypeError(self._xmlFile + ": invalid format")
+            raise TypeError(self.xmlInputFile + ": invalid format")
         ep  = seiscomp.datamodel.EventParameters.Cast(obj)
         if ep is None:
-            raise TypeError(self._xmlFile + ": no eventparameters found")
+            raise TypeError(self.xmlInputFile + ": no eventparameters found")
         return ep
 
     def run(self):

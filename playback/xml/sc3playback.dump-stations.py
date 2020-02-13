@@ -42,11 +42,11 @@ class InvApp(seiscomp.client.Application):
         inv = seiscomp.datamodel.Inventory()
         dbr.loadNetworks(inv) 
         nnet = inv.networkCount()
-        for inet in xrange(nnet):
+        for inet in range(nnet):
             net = inv.network(inet)
             dbr.load(net);
             nsta = net.stationCount()
-            for ista in xrange(nsta):
+            for ista in range(nsta):
                 sta = net.station(ista)
                 line = "%-2s %-5s %9.4f %9.4f %6.1f" % ( net.code(), sta.code(), sta.latitude(), sta.longitude(), sta.elevation() )
                 try:

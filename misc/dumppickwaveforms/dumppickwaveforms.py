@@ -86,7 +86,7 @@ class RecordDumperApp(sc3stuff.eventloader.EventLoaderApp):
             t0 = p.time().value()
             dist_arr.append((t0, arr))
 #           dist_arr.append((arr.distance(), arr))
-        dist_arr.sort()
+        sorted(dist_arr, key=lambda a:a[0])
         return dist_arr
 
     def _dumpWaveform(self, evt, org):

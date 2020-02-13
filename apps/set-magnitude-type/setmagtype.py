@@ -10,7 +10,7 @@
 ############################################################################
 
 from __future__ import print_function
-import sys, traceback, socket
+import sys, socket
 import seiscomp.core, seiscomp.datamodel
 import sc3stuff.util
 from sc3stuff.eventloader import EventLoaderApp

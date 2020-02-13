@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 from __future__ import print_function
-import traceback, sys
+import sys
 import seiscomp.client, seiscomp.core, seiscomp.datamodel
 from sc3stuff.inventory import InventoryIterator
 
@@ -18,36 +18,32 @@ class InvApp(seiscomp.client.Application):
     def run(self):
         now = seiscomp.core.Time.GMT()
         lines = []
-        try:
-            mod = self.configModule()
-            for i in xrange(mod.configStationCount()):
-                cfg = mod.configStation(i)
-                setup = seiscomp.datamodel.findSetup(cfg, self.name(), True)
-                if not setup: continue
 
-                params = seiscomp.datamodel.ParameterSet.Find(setup.parameterSetID())
-                if not params: continue
+        mod = self.configModule()
+        for i in range(mod.configStationCount()):
+            cfg = mod.configStation(i)
+            setup = seiscomp.datamodel.findSetup(cfg, self.name(), True)
+            if not setup: continue
 
-                detecStream = None
-                detecLocid = ""
+            params = seiscomp.datamodel.ParameterSet.Find(setup.parameterSetID())
+            if not params: continue
 
-                for k in xrange(params.parameterCount()):
-                    param = params.parameter(k)
-                    if param.name() == "detecStream":
-                        detecStream = param.value()
-                    elif param.name() == "detecLocid":
-                        detecLocid = param.value()
-                if detecLocid == "":
-                    detecLocid = "--"
-                if not detecStream:
-                    continue
+            detecStream = None
+            detecLocid = ""
 
-                line = "%s %s %s %s" % (cfg.networkCode(), cfg.stationCode(), detecLocid, detecStream)
-                lines.append(line)
-        except:
-            info = traceback.format_exception(*sys.exc_info())
-            for i in info: sys.stderr.write(i)
-            sys.exit(-1)
+            for k in range(params.parameterCount()):
+                param = params.parameter(k)
+                if param.name() == "detecStream":
+                    detecStream = param.value()
+                elif param.name() == "detecLocid":
+                    detecLocid = param.value()
+            if detecLocid == "":
+                detecLocid = "--"
+            if not detecStream:
+                continue
+
+            line = "%s %s %s %s" % (cfg.networkCode(), cfg.stationCode(), detecLocid, detecStream)
+            lines.append(line)
 
         lines.sort()
         for line in lines:

@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/sh -e
 
 evt="$1" comment="$2"
 
@@ -24,17 +24,17 @@ do
 done
 
 mkdir -p "playbacks/$evt"
-$HOME/seiscomp3/bin/seiscomp exec \
-    python sc3playback.dump-picks.py $timewindow $debug -d "$db" \
+~/seiscomp-agpl/bin/seiscomp-python \
+    sc3playback.dump-picks.py $timewindow $debug -d "$db" \
     > "playbacks/$evt"/objects.xml
 
 test -z "$comment" || echo "$evt  $comment" \
     > "playbacks/$evt"/comment.txt
 
-$HOME/seiscomp3/bin/seiscomp exec \
-    python sc3playback.dump-stations.py $debug -d "$db" \
+~/seiscomp-agpl/bin/seiscomp-python \
+    sc3playback.dump-stations.py $debug -d "$db" \
     > "playbacks/$evt"/station-locations.txt
 
-$HOME/seiscomp3/bin/seiscomp exec \
+$HOME/seiscomp-agpl/bin/seiscomp exec \
     scbulletin $debug -3 -d "$db" -E "$evt" \
     > "playbacks/$evt"/bulletin

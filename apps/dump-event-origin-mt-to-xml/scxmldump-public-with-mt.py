@@ -1,6 +1,7 @@
 #!/usr/bin/env seiscomp-python
 #
-# Dump origin, magnitude and moment tensor information for an event to SeisComP XML.
+# Dump origin, magnitude and moment tensor information for an
+# event to SeisComP XML.
 #
 # Could be invoked in a pipeline like:
 #
@@ -11,13 +12,13 @@
 
 import sys
 import seiscomp.client, seiscomp.datamodel, seiscomp.io
+import sc3stuff.util
 
 
 class MomentTensorDumper(seiscomp.client.Application):
 
-    def __init__(self):
-        argv = sys.argv
-        seiscomp.client.Application.__init__(self, len(argv), argv)
+    def __init__(self, argc, argv):
+        seiscomp.client.Application.__init__(self, argc, argv)
         self.setMessagingEnabled(False)
         self.setDatabaseEnabled(True, False)
 
@@ -127,18 +128,14 @@ class MomentTensorDumper(seiscomp.client.Application):
             self.do_one_event(evid, ep)
 
         # finally dump event parameters as formatted XML archive to stdout
-        ar = seiscomp.io.XMLArchive()
-        ar.setFormattedOutput(True)
-        ar.create("-")
-        ar.writeObject(ep)
-        ar.close()
+        sc3stuff.util.writeEventParametersToXML(ep)
 
         del ep
         return True
 
     def do_one_event(self, evid, ep):
-        """ Things to do:
-        
+        """
+        Things to do:
         * load event
         * load preferred origin without arrivals
         * load at least the preferred magnitude if available, all magnitudes if requested
@@ -243,7 +240,9 @@ class MomentTensorDumper(seiscomp.client.Application):
 
 
 def main():
-    app = MomentTensorDumper()
+    argv = sys.argv
+    argc = len(argv)
+    app = MomentTensorDumper(argc, argv)
     app()
 
 if __name__ == "__main__":

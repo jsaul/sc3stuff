@@ -72,13 +72,13 @@ class PickPlayer(seiscomp.client.Application):
     def _readEventParametersFromXML(self):
         ar = seiscomp.io.XMLArchive()
         if ar.open(self._xmlFile) == False:
-            raise IOError, self._xmlFile + ": unable to open"
+            raise IOError(self._xmlFile + ": unable to open")
         obj = ar.readObject()
         if obj is None:
-            raise TypeError, self._xmlFile + ": invalid format"
+            raise TypeError(self._xmlFile + ": invalid format")
         ep  = seiscomp.datamodel.EventParameters.Cast(obj)
         if ep is None:
-            raise TypeError, self._xmlFile + ": no eventparameters found"
+            raise TypeError(self._xmlFile + ": no eventparameters found")
         return ep
 
     def _runBatchMode(self):
@@ -160,7 +160,7 @@ class PickPlayer(seiscomp.client.Application):
             if typ == 'START_ELEMENT' and node.nodeName in ["pick","amplitude","origin"]:
                 events.expandNode(node)
                 xmlNode = node.toxml()
-                ofile = file(self._xmlFile, "w")
+                ofile = open(self._xmlFile, "w")
                 # wrap object into a SC3 XML template
                 ofile.write('<?xml version="1.0" encoding="UTF-8"?><seiscomp xmlns="http://geofon.gfz-potsdam.de/ns/seiscomp3-schema/0.7" version="0.7"><EventParameters>%s</EventParameters></seiscomp>\n' % xmlNode)
                 ofile.close()

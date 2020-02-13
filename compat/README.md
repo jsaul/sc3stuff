@@ -14,6 +14,9 @@ naming in current Python scripts already. After the transition we can then
 use a similar meachanism in order to prevent existing custom scripts from 
 breaking using a new SeisComP package.
 
-Install using the usual ```python setup.py install``` but make sure that 
-you add the installation directory to your ```PYTHONPATH``` environment 
-variable *before* the SeisComP environment variables.
+Install using the usual ```setup.py``` script:
+
+    python setup.py install --home=$HOME/seiscomp3
+
+and the compatibility package will be installed along with the other
+seiscomp3 stuff. You don't need to do anything else.

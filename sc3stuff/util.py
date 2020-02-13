@@ -31,31 +31,31 @@ def writeEventParametersToXML(ep, xmlFile="-", formatted=True):
 
 
 def EventParametersEvents(ep):
-    for i in xrange(ep.eventCount()):
+    for i in range(ep.eventCount()):
         obj = seiscomp.datamodel.Event.Cast(ep.event(i))
         if obj:
             yield obj
 
 def EventParametersOrigins(ep):
-    for i in xrange(ep.originCount()):
+    for i in range(ep.originCount()):
         obj = seiscomp.datamodel.Origin.Cast(ep.origin(i))
         if obj:
             yield obj
 
 def EventParametersPicks(ep):
-    for i in xrange(ep.pickCount()):
+    for i in range(ep.pickCount()):
         obj = seiscomp.datamodel.Pick.Cast(ep.pick(i))
         if obj:
             yield obj
 
 def EventParametersAmplitudes(ep):
-    for i in xrange(ep.amplitudeCount()):
+    for i in range(ep.amplitudeCount()):
         obj = seiscomp.datamodel.Amplitude.Cast(ep.amplitude(i))
         if obj:
             yield obj
 
 def EventParametersFocalMechanisms(ep):
-    for i in xrange(ep.focalMechanismCount()):
+    for i in range(ep.focalMechanismCount()):
         obj = seiscomp.datamodel.FocalMechanism.Cast(ep.focalMechanism(i))
         if obj:
             yield obj
@@ -97,7 +97,7 @@ def extractEventParameters(ep, eventID=None, filterOrigins=False, filterPicks=Fa
                 if publicID == event[_eventID].preferredOriginID():
                     origin[publicID] = org = obj
                     # collect pick ID's for all associated picks
-                    for i in xrange(org.arrivalCount()):
+                    for i in range(org.arrivalCount()):
                         arr = org.arrival(i)
                         pickIDs.append(arr.pickID())
                     break
@@ -134,6 +134,29 @@ def extractEventParameters(ep, eventID=None, filterOrigins=False, filterPicks=Fa
     return event, origin, pick, ampl, fm
 
 
+def EventParametersIterator(ep):
+    """
+    Iterates over all public objects in an EventParameters instance
+    """
+    for i in range(ep.eventCount()):
+        yield ep.event(i)
+    for i in range(ep.originCount()):
+        org = ep.origin(i)
+        for k in range(org.magnitudeCount()):
+            mag = org.magnitude(k)
+            yield mag
+        yield org
+    for i in range(ep.pickCount()):
+        yield ep.pick(i)
+    for i in range(ep.amplitudeCount()):
+        yield ep.amplitude(i)
+    for i in range(ep.focalMechanismCount()):
+        fm = ep.focalMechanism(i)
+        for k in range(fm.momentTensorCount()):
+            mt = fm.momentTensor(k)
+            yield mt
+        yield fm
+
 def ep_get_event(ep, eventID):
 
     for evt in EventParametersEvents(ep):
@@ -148,7 +171,7 @@ def ep_get_origin(ep, eventID=None, originID=None):
         if not evt:
             return
 
-    for i in xrange(ep.originCount()):
+    for i in range(ep.originCount()):
         # FIXME: The cast hack forces the SC3 refcounter to be increased.
         org = seiscomp.datamodel.Origin.Cast(ep.origin(i))
         if originID is None:
@@ -186,7 +209,7 @@ def ep_get_region(ep, eventID):
     evt = ep_get_event(ep, eventID)
     if not evt:
         return
-    for i in xrange(evt.eventDescriptionCount()):
+    for i in range(evt.eventDescriptionCount()):
         evtd = evt.eventDescription(i)
         evtdtype = seiscomp.datamodel.EEventDescriptionTypeNames.name(evtd.type())
         evtdtext = evtd.text()

@@ -1,7 +1,8 @@
 #!/usr/bin/env python
 
 from __future__ import print_function
-import traceback, sys, seiscomp.core, seiscomp.client
+import sys
+import seiscomp.core, seiscomp.client
 from sc3stuff.inventory import InventoryIterator
 
 class InvApp(seiscomp.client.Application):

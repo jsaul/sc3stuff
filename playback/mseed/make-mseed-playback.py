@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-import sys, time, traceback
+import sys, time
 import seiscomp.client, seiscomp.datamodel
 
 stream_whitelist = ["BH", "SH","HH"]
@@ -36,14 +36,14 @@ def getCurrentStreams(dbr):
 
     result = []
     
-    for inet in xrange(inv.networkCount()):
+    for inet in range(inv.networkCount()):
         network = inv.network(inet)
         if network_blacklist and network.code()     in network_blacklist:
             continue
         if network_whitelist and network.code() not in network_whitelist:
             continue
         dbr.load(network);
-        for ista in xrange(network.stationCount()):
+        for ista in range(network.stationCount()):
             station = network.station(ista)
             try:
                 start = station.start()
@@ -59,10 +59,10 @@ def getCurrentStreams(dbr):
 
             # now we know that this is an operational station
 
-            for iloc in xrange(station.sensorLocationCount()):
+            for iloc in range(station.sensorLocationCount()):
                 loc = station.sensorLocation(iloc)
 
-                for istr in xrange(loc.streamCount()):
+                for istr in range(loc.streamCount()):
                     stream = loc.stream(istr)
                     if stream.code()[:2] not in stream_whitelist:
                         continue
@@ -82,28 +82,20 @@ class DumperApp(seiscomp.client.Application):
         self.setDaemonEnabled(False)
         self.setRecordStreamEnabled(True)
 
-    def validateParameters(self):
-        try:
-            if seiscomp.client.Application.validateParameters(self) == False:
-                return False
-            return True
 
-        except:
-            info = traceback.format_exception(*sys.exc_info())
-            for i in info: sys.stderr.write(i)
+    def validateParameters(self):
+        if seiscomp.client.Application.validateParameters(self) == False:
             return False
+        return True
+
 
     def createCommandLineDescription(self):
         try:
-            try:
-                self.commandline().addGroup("Dump")
-                self.commandline().addStringOption("Dump", "event,E", "ID of event to dump")
-                self.commandline().addOption("Dump", "unsorted,U", "produce unsorted output (not suitable for direct playback!)")
-            except:
-                seiscomp.logging.warning("caught unexpected error %s" % sys.exc_info())
+            self.commandline().addGroup("Dump")
+            self.commandline().addStringOption("Dump", "event,E", "ID of event to dump")
+            self.commandline().addOption("Dump", "unsorted,U", "produce unsorted output (not suitable for direct playback!)")
         except:
-            info = traceback.format_exception(*sys.exc_info())
-            for i in info: sys.stderr.write(i)
+            seiscomp.logging.warning("caught unexpected error %s" % sys.exc_info())
 
     def get_and_write_data(self, t1, t2, out):
         dbr = seiscomp.datamodel.DatabaseReader(self.database())
@@ -122,8 +114,11 @@ class DumperApp(seiscomp.client.Application):
         netsta_keys.sort()
         for netsta in netsta_keys:
 
-            number_of_attempts = 1 # experts only: increase in case of connection problems, normally not needed
-            for attempt in xrange(number_of_attempts):
+            # experts only:
+            # increase in case of connection problems, normally not needed
+            number_of_attempts = 1
+
+            for attempt in range(number_of_attempts):
                 if self.isExitRequested(): return
 
                 stream = seiscomp.io.RecordStream.Open(self.recordStreamURL())
@@ -175,7 +170,7 @@ class DumperApp(seiscomp.client.Application):
         evt = self._dbq.loadObject(seiscomp.datamodel.Event.TypeInfo(), eventID)
         evt = seiscomp.datamodel.Event.Cast(evt)
         if evt is None:
-            raise TypeError, "unknown event '" + eventID + "'"
+            raise TypeError("unknown event '" + eventID + "'")
 
         originID = evt.preferredOriginID()
         org = self._dbq.loadObject(seiscomp.datamodel.Origin.TypeInfo(), originID) 
@@ -186,39 +181,27 @@ class DumperApp(seiscomp.client.Application):
         mag = seiscomp.datamodel.Magnitude.Cast(mag)
 
         now = seiscomp.core.Time.GMT()
-        try:
-            val = mag.magnitude().value()
-            if sort:
-                out = "%s-M%3.1f.sorted-mseed" % (eventID, val)
-            else:
-                out = "%s-M%3.1f.unsorted-mseed" % (eventID, val)
-            out = file(out, "w")
+ 
+        val = mag.magnitude().value()
+        if sort:
+            out = "%s-M%3.1f.sorted-mseed" % (eventID, val)
+        else:
+            out = "%s-M%3.1f.unsorted-mseed" % (eventID, val)
+        out = open(out, "w")
 
-            t0 = org.time().value()
-            t1, t2 = t0 + seiscomp.core.TimeSpan(-before), t0 + seiscomp.core.TimeSpan(after)
+        t0 = org.time().value()
+        t1, t2 = t0 + seiscomp.core.TimeSpan(-before), t0 + seiscomp.core.TimeSpan(after)
 
-            self.get_and_write_data(t1,t2,out)
-            return True
+        self.get_and_write_data(t1,t2,out)
+        return True
 
-        except:
-            info = traceback.format_exception(*sys.exc_info())
-            for i in info: sys.stderr.write(i)
-            return False
 
     def run(self):
-        try:
-            if self.commandline().hasOption("unsorted"):
-                sort = False
+        if self.commandline().hasOption("unsorted"):
+            sort = False
 
-            evid = self.commandline().optionString("event")
-            if not self.dump(evid):
-                return False
-        except:
-            info = traceback.format_exception(*sys.exc_info())
-            for i in info: sys.stderr.write(i)
-            return False
-
-        return True
+        evid = self.commandline().optionString("event")
+        return self.dump(evid):
 
 
 def main():

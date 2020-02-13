@@ -8,7 +8,6 @@
 #                                                                          #
 ############################################################################
 
-from __future__ import print_function
 import sys
 import seiscomp.client, seiscomp.datamodel, seiscomp.logging
 import sc3stuff.util
@@ -54,7 +53,7 @@ def printPickList(event, origin, pick, ampl, fm, min_weight=-1, f=sys.stdout):
             if originID != evt.preferredOriginID():
                 continue
             org = origin[originID]
-            for i in xrange(org.arrivalCount()):
+            for i in range(org.arrivalCount()):
                 a = org.arrival(i)
                 if a.weight() < min_weight:
                     continue
@@ -112,7 +111,7 @@ class EventLoaderApp(seiscomp.client.Application):
     def _readEventParametersFromXML(self):
         ep = sc3stuff.util.readEventParametersFromXML(self._xmlFile)
         if ep is None:
-            raise TypeError, self._xmlFile + ": no eventparameters found"
+            raise TypeError(self._xmlFile + ": no eventparameters found")
         return ep
 
 

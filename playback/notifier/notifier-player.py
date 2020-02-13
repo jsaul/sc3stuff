@@ -9,7 +9,7 @@ class NotifierPlayer(seiscomp.client.Application):
         self.setMessagingEnabled(False)
         self.setDatabaseEnabled(False, False)
         self._startTime = self._endTime = None
-        self._xmlFileName = None
+        self.xmlInputFileName = None
         self._time = None
 #       self.speed = 1
 
@@ -32,7 +32,7 @@ class NotifierPlayer(seiscomp.client.Application):
         try:    end = self.commandline().optionString("end")
         except: end = None
 
-        try:    self._xmlFileName = self.commandline().optionString("xml-file")
+        try:    self.xmlInputFileName = self.commandline().optionString("xml-file")
         except: pass
 
 #       try:
@@ -63,19 +63,19 @@ class NotifierPlayer(seiscomp.client.Application):
             raise TypeError("got invalid xml")
         nmsg = seiscomp.datamodel.NotifierMessage.Cast(obj)
         if nmsg is None:
-            raise TypeError(self._xmlFile + ": no NotifierMessage object found")
+            raise TypeError(self.xmlInputFile + ": no NotifierMessage object found")
         return nmsg
 
     def run(self):
-        if not self._xmlFileName:
+        if not self.xmlInputFileName:
             return False
 
-        seiscomp.logging.debug("input file is %s" % self._xmlFileName)
-        self._xmlFile = file(self._xmlFileName)
+        seiscomp.logging.debug("input file is %s" % self.xmlInputFileName)
+        f = open(self.xmlInputFileName)
 
         while True:
             while True:
-                line = self._xmlFile.readline()
+                line = f.readline()
                 if not line:
                     # empty input
                     return True
@@ -107,7 +107,7 @@ class NotifierPlayer(seiscomp.client.Application):
 
             nbytes = int(nbytes)
             assert sharp[0] == "#"
-            xml = self._xmlFile.read(nbytes)
+            xml = f.read(nbytes)
 
             nmsg = self._readNotifierMessageFromXML(xml.strip())
             self.sync(time)
