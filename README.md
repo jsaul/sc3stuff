@@ -1,7 +1,7 @@
 sc3stuff
 ========
 
-# Miscellaneous scripts for SeisComP 3
+# Miscellaneous scripts for SeisComP 3 (OBSOLETE, replaced by scstuff)
 
 * playback/ Scripts to support waveform and object (XML) playbacks
 * snippets/ Code snippets for miscellaneous topics
